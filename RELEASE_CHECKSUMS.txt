@@ -1,0 +1,15 @@
+Gesture Drive 3D — Release Checksums
+=====================================
+
+SHA-256 checksums for Windows installers.
+
+Gesture Drive 3D Setup 0.1.0.exe
+  7F24E047ED4D26F5F7082B564D85939A3450AAE47B31A4423F765115EF69E54A
+
+Gesture Drive 3D Setup 0.2.0.exe
+  D398B66E3EAC81AC55E93CBC284B6597D732C1751EF3758004E4DF4E3F678414
+
+Verify with PowerShell:
+  Get-FileHash "Gesture Drive 3D Setup 0.2.0.exe" -Algorithm SHA256
+
+Generated: 2026-11-24

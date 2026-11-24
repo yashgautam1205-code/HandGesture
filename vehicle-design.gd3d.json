@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "model": "procedural-sport-coupe",
+  "customization": {
+    "paint": "#1d5e66",
+    "finish": "metallic",
+    "spoiler": true,
+    "windowTint": true,
+    "wheelColor": "#a9b5bd"
+  }
+}

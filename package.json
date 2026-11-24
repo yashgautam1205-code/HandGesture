@@ -1,0 +1,64 @@
+{
+  "name": "gesture-drive-3d",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Gesture-controlled 3D vehicle customization studio",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && npm run build:electron && electron .\"",
+    "build": "npm run build:web && npm run build:electron",
+    "build:web": "tsc -p tsconfig.json && vite build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "test": "vitest run",
+    "package:win": "npm run build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.21",
+    "@react-three/drei": "9.122.0",
+    "@react-three/fiber": "8.18.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "three": "0.172.0",
+    "zustand": "5.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.5",
+    "@types/node": "22.13.4",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@types/three": "0.172.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "concurrently": "9.1.2",
+    "electron": "45.3.3",
+    "electron-builder": "26.18.0",
+    "typescript": "5.7.3",
+    "tailwindcss": "4.3.5",
+    "vite": "8.3.8",
+    "vitest": "5.1.0",
+    "wait-on": "8.0.2"
+  },
+  "build": {
+    "appId": "com.gesturedrive.studio",
+    "productName": "Gesture Drive 3D",
+    "copyright": "Copyright © 2026 Gesture Drive 3D",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gesture Drive 3D"
+    }
+  }
+}
