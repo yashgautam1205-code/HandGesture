@@ -4,9 +4,10 @@
  */
 
 import type { AIChatRequest, AIChatResponse, ModificationProposal, AIPresetPackage } from "./types";
-import { buildSystemPrompt, buildUserPrompt, buildKnowledgePrompt, buildImageConceptPrompt, buildRequestContext } from "./prompts";
+import { buildSystemPrompt, buildUserPrompt, buildKnowledgePrompt, buildImageConceptPrompt } from "./prompts";
 import { validateChatResponse, extractJSON } from "./validator";
 import { STYLING_PRESETS, getPresetById } from "./presets";
+import type { VehicleContext } from "./vehicleContext";
 
 export type AIResult = {
   response: AIChatResponse | null;
@@ -15,7 +16,7 @@ export type AIResult = {
 };
 
 export async function sendAIChat(request: AIChatRequest): Promise<AIResult> {
-  const systemPrompt = buildSystemPrompt(request.context);
+  const systemPrompt = buildSystemPrompt(request.context as VehicleContext);
   const userPrompt = request.options?.knowledgeOnly
     ? buildKnowledgePrompt(request.prompt)
     : request.options?.imageGeneration
@@ -60,4 +61,4 @@ export function findPreset(id: string): AIPresetPackage | undefined {
   return getPresetById(id);
 }
 
-export { buildRequestContext };
+export { buildSystemPrompt, buildUserPrompt, buildKnowledgePrompt, buildImageConceptPrompt };

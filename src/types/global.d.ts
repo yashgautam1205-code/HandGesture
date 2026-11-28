@@ -5,6 +5,7 @@ declare global {
     gestureDrive?: {
       saveProject(contents: string): Promise<boolean>;
       loadProject(): Promise<string | null>;
+      saveScreenshot(dataUrl: string): Promise<boolean>;
       getAIStatus(): Promise<{
         provider: "openai" | "anthropic" | "none";
         enabled: boolean;

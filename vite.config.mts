@@ -7,8 +7,10 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
-  plugins: [
+export default defineConfig(({ mode }) => {
+  const isElectron = mode === "electron";
+
+  const plugins = [
     react(),
     tailwindcss(),
     {
@@ -23,11 +25,22 @@ export default defineConfig({
         );
       },
     },
-  ],
-  test: {
-    environment: "node",
-  },
-  build: {
-    chunkSizeWarningLimit: 700,
-  },
+  ];
+
+  return {
+    plugins,
+    test: {
+      environment: "node",
+    },
+    build: {
+      chunkSizeWarningLimit: 700,
+      outDir: isElectron ? "dist-electron" : "dist",
+      emptyOutDir: true,
+    },
+    clearScreen: false,
+    server: {
+      host: "127.0.0.1",
+      port: 5173,
+    },
+  };
 });

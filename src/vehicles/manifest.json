@@ -1,5 +1,632 @@
 [
   {
+    "id": "toy-car",
+    "manufacturer": "Generic",
+    "model": "Toy Car",
+    "generation": null,
+    "year": null,
+    "variant": null,
+    "displayName": "Toy Car",
+    "thumbnail": null,
+    "specifications": null,
+    "asset": {
+      "status": "available",
+      "accuracy": "verified",
+      "mainFile": "vehicles/toy-car.glb",
+      "files": ["vehicles/toy-car.glb"],
+      "remoteFiles": null,
+      "integrity": {
+        "vehicles/toy-car.glb": "01a60862de55cd4b9f3acfab0b0def86451800f9c42467fcd61052c16cb9838c"
+      },
+      "source": {
+        "name": "Khronos Group glTF Sample Assets",
+        "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ToyCar",
+        "attribution": "Toy Car by Guido Odendahl and Eric Chadwick, CC0 1.0 Universal."
+      },
+      "license": {
+        "name": "Creative Commons Zero v1.0 Universal (CC0 1.0)",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": "Public domain. No attribution required."
+      }
+    },
+    "components": [
+      {
+        "componentId": "toycar-body",
+        "meshName": "ToyCar",
+        "displayName": "Toy Car Body",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      }
+    ],
+    "customizationOptions": ["Body material"]
+  },
+  {
+    "id": "car-concept",
+    "manufacturer": "Khronos",
+    "model": "Car Concept",
+    "generation": null,
+    "year": null,
+    "variant": null,
+    "displayName": "Khronos Car Concept",
+    "thumbnail": "vehicles/car-concept/thumbnail.png",
+    "specifications": null,
+    "asset": {
+      "status": "available",
+      "accuracy": "verified",
+      "mainFile": "vehicles/car-concept/car-concept.glb",
+      "files": ["vehicles/car-concept/car-concept.glb"],
+      "remoteFiles": null,
+      "integrity": {
+        "vehicles/car-concept/car-concept.glb": "c272098089d78c5cd9fd9f24ff50ee8acf8d932c55f2d55fc10adb6c8998966b"
+      },
+      "source": {
+        "name": "Khronos Group glTF Sample Assets",
+        "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept",
+        "attribution": "Car Concept by Eric Chadwick (Darmstadt Graphics Group GmbH), CC BY 4.0 International."
+      },
+      "license": {
+        "name": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "attribution": "Credit Eric Chadwick (Darmstadt Graphics Group GmbH); link the source and license, and indicate if changes were made. Khronos logos are trademarks."
+      }
+    },
+    "components": [
+      {
+        "componentId": "car-concept-body",
+        "meshName": "BodyPanels",
+        "displayName": "Body panels",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-doors",
+        "meshName": "Doors",
+        "displayName": "Doors",
+        "category": "door",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-roof",
+        "meshName": "Roof",
+        "displayName": "Roof",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-hood",
+        "meshName": "Hood",
+        "displayName": "Hood",
+        "category": "bonnet",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-trunk",
+        "meshName": "Trunk",
+        "displayName": "Trunk",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-fender-front-left",
+        "meshName": "FenderFrontL",
+        "displayName": "Front left fender",
+        "category": "front-fender",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-fender-front-right",
+        "meshName": "FenderFrontR",
+        "displayName": "Front right fender",
+        "category": "front-fender",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-fender-rear-left",
+        "meshName": "FenderRearL",
+        "displayName": "Rear left fender",
+        "category": "rear-fender",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-fender-rear-right",
+        "meshName": "FenderRearR",
+        "displayName": "Rear right fender",
+        "category": "rear-fender",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-bumper-front",
+        "meshName": "BumperFront",
+        "displayName": "Front bumper",
+        "category": "bumper",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-bumper-rear",
+        "meshName": "BumperRear",
+        "displayName": "Rear bumper",
+        "category": "bumper",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-side-skirt",
+        "meshName": "SideSkirt",
+        "displayName": "Side skirts",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-wheel-front-left",
+        "meshName": "WheelFrontL",
+        "displayName": "Front left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-wheel-front-right",
+        "meshName": "WheelFrontR",
+        "displayName": "Front right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-wheel-rear-left",
+        "meshName": "WheelRearL",
+        "displayName": "Rear left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-wheel-rear-right",
+        "meshName": "WheelRearR",
+        "displayName": "Rear right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-rim-front",
+        "meshName": "Rim1",
+        "displayName": "Front rims (shared)",
+        "category": "rim",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-rim-rear",
+        "meshName": "Rim2",
+        "displayName": "Rear rims (shared)",
+        "category": "rim",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-glass",
+        "meshName": "Glass",
+        "displayName": "Glass",
+        "category": "window",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": false
+      },
+      {
+        "componentId": "car-concept-interior",
+        "meshName": "Interior",
+        "displayName": "Interior",
+        "category": "interior-trim",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-dashboard",
+        "meshName": "Dashboard",
+        "displayName": "Dashboard",
+        "category": "dashboard",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "car-concept-headlight",
+        "meshName": "Headlight",
+        "displayName": "Headlights",
+        "category": "headlight",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": false
+      },
+      {
+        "componentId": "car-concept-brakelight",
+        "meshName": "Brakelight",
+        "displayName": "Brake lights",
+        "category": "tail-light",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": false
+      },
+      {
+        "componentId": "car-concept-mirror",
+        "meshName": "Mirror",
+        "displayName": "Mirrors",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      }
+    ],
+    "customizationOptions": ["Body panels material", "Doors material", "Roof material", "Hood material", "Trunk material", "Fenders material", "Bumpers material", "Side skirts material", "Wheels material", "Front rims material", "Rear rims material", "Interior material", "Dashboard material", "Mirrors material", "Material variants (Carmine, Pearl, Graphite)"]
+  },
+  {
+    "id": "kenney-sedan",
+    "manufacturer": "Generic",
+    "model": "Sedan",
+    "generation": null,
+    "year": null,
+    "variant": null,
+    "displayName": "Kenney Sedan",
+    "thumbnail": "vehicles/kenney-sedan/thumbnail.png",
+    "specifications": null,
+    "asset": {
+      "status": "available",
+      "accuracy": "verified",
+      "mainFile": "vehicles/kenney-sedan/sedan.glb",
+      "files": ["vehicles/kenney-sedan/sedan.glb"],
+      "remoteFiles": null,
+      "integrity": {
+        "vehicles/kenney-sedan/sedan.glb": "4B38A659A98478F6B85EC657C1689A92DA2A53D7CDE85D9AB4CBD574F044C08D"
+      },
+      "source": {
+        "name": "Kenney Car Kit",
+        "url": "https://kenney.nl/assets/car-kit",
+        "attribution": "Sedan by Kenney (www.kenney.nl), CC0 1.0 Universal."
+      },
+      "license": {
+        "name": "Creative Commons Zero v1.0 Universal (CC0 1.0)",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": "Public domain. No attribution required. Crediting Kenney is appreciated."
+      }
+    },
+    "components": [
+      {
+        "componentId": "kenney-sedan-body",
+        "meshName": "body",
+        "displayName": "Body",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-sedan-wheel-front-left",
+        "meshName": "wheel-front-left",
+        "displayName": "Front left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-sedan-wheel-front-right",
+        "meshName": "wheel-front-right",
+        "displayName": "Front right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-sedan-wheel-back-left",
+        "meshName": "wheel-back-left",
+        "displayName": "Rear left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-sedan-wheel-back-right",
+        "meshName": "wheel-back-right",
+        "displayName": "Rear right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      }
+    ],
+    "customizationOptions": ["Body material", "Wheels material"]
+  },
+  {
+    "id": "kenney-suv",
+    "manufacturer": "Generic",
+    "model": "SUV",
+    "generation": null,
+    "year": null,
+    "variant": null,
+    "displayName": "Kenney SUV",
+    "thumbnail": "vehicles/kenney-suv/thumbnail.png",
+    "specifications": null,
+    "asset": {
+      "status": "available",
+      "accuracy": "verified",
+      "mainFile": "vehicles/kenney-suv/suv.glb",
+      "files": ["vehicles/kenney-suv/suv.glb"],
+      "remoteFiles": null,
+      "integrity": {
+        "vehicles/kenney-suv/suv.glb": "59560FE1358FE9B2B63D5593887CF796EF9A6FA33F1E9C752B2C3F03C44259A5"
+      },
+      "source": {
+        "name": "Kenney Car Kit",
+        "url": "https://kenney.nl/assets/car-kit",
+        "attribution": "SUV by Kenney (www.kenney.nl), CC0 1.0 Universal."
+      },
+      "license": {
+        "name": "Creative Commons Zero v1.0 Universal (CC0 1.0)",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": "Public domain. No attribution required. Crediting Kenney is appreciated."
+      }
+    },
+    "components": [
+      {
+        "componentId": "kenney-suv-body",
+        "meshName": "body",
+        "displayName": "Body",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-suv-wheel-front-left",
+        "meshName": "wheel-front-left",
+        "displayName": "Front left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-suv-wheel-front-right",
+        "meshName": "wheel-front-right",
+        "displayName": "Front right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-suv-wheel-back",
+        "meshName": "wheel-back",
+        "displayName": "Rear wheels (single mesh)",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-suv-wheel-back-left",
+        "meshName": "wheel-back-left",
+        "displayName": "Rear left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-suv-wheel-back-right",
+        "meshName": "wheel-back-right",
+        "displayName": "Rear right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      }
+    ],
+    "customizationOptions": ["Body material", "Wheels material"]
+  },
+  {
+    "id": "kenney-race",
+    "manufacturer": "Generic",
+    "model": "Sedan Sports",
+    "generation": null,
+    "year": null,
+    "variant": null,
+    "displayName": "Kenney Sedan Sports",
+    "thumbnail": "vehicles/kenney-race/thumbnail.png",
+    "specifications": null,
+    "asset": {
+      "status": "available",
+      "accuracy": "verified",
+      "mainFile": "vehicles/kenney-race/sedan-sports.glb",
+      "files": ["vehicles/kenney-race/sedan-sports.glb"],
+      "remoteFiles": null,
+      "integrity": {
+        "vehicles/kenney-race/sedan-sports.glb": "50D0CF9F2DDAA9DA1D93A8BD5BA67C9351884C824DABFAA6B29CAFC54FD65C3F"
+      },
+      "source": {
+        "name": "Kenney Car Kit",
+        "url": "https://kenney.nl/assets/car-kit",
+        "attribution": "Sedan Sports by Kenney (www.kenney.nl), CC0 1.0 Universal."
+      },
+      "license": {
+        "name": "Creative Commons Zero v1.0 Universal (CC0 1.0)",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": "Public domain. No attribution required. Crediting Kenney is appreciated."
+      }
+    },
+    "components": [
+      {
+        "componentId": "kenney-race-body",
+        "meshName": "body",
+        "displayName": "Body",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-race-spoiler",
+        "meshName": "spoiler",
+        "displayName": "Spoiler",
+        "category": "spoiler",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-race-wheel-front-left",
+        "meshName": "wheel-front-left",
+        "displayName": "Front left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-race-wheel-front-right",
+        "meshName": "wheel-front-right",
+        "displayName": "Front right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-race-wheel-back-left",
+        "meshName": "wheel-back-left",
+        "displayName": "Rear left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-race-wheel-back-right",
+        "meshName": "wheel-back-right",
+        "displayName": "Rear right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      }
+    ],
+    "customizationOptions": ["Body material", "Spoiler material", "Wheels material"]
+  },
+  {
+    "id": "kenney-truck",
+    "manufacturer": "Generic",
+    "model": "Truck",
+    "generation": null,
+    "year": null,
+    "variant": null,
+    "displayName": "Kenney Truck",
+    "thumbnail": "vehicles/kenney-truck/thumbnail.png",
+    "specifications": null,
+    "asset": {
+      "status": "available",
+      "accuracy": "verified",
+      "mainFile": "vehicles/kenney-truck/truck.glb",
+      "files": ["vehicles/kenney-truck/truck.glb"],
+      "remoteFiles": null,
+      "integrity": {
+        "vehicles/kenney-truck/truck.glb": "3AA9EA96BAACA1FF88A12C4A12526392B4020A37F768814ED24F11C6306DC297"
+      },
+      "source": {
+        "name": "Kenney Car Kit",
+        "url": "https://kenney.nl/assets/car-kit",
+        "attribution": "Truck by Kenney (www.kenney.nl), CC0 1.0 Universal."
+      },
+      "license": {
+        "name": "Creative Commons Zero v1.0 Universal (CC0 1.0)",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "attribution": "Public domain. No attribution required. Crediting Kenney is appreciated."
+      }
+    },
+    "components": [
+      {
+        "componentId": "kenney-truck-body",
+        "meshName": "body",
+        "displayName": "Body",
+        "category": "body",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-truck-wheel-front-left",
+        "meshName": "wheel-front-left",
+        "displayName": "Front left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-truck-wheel-front-right",
+        "meshName": "wheel-front-right",
+        "displayName": "Front right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-truck-wheel-back-left",
+        "meshName": "wheel-back-left",
+        "displayName": "Rear left wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      },
+      {
+        "componentId": "kenney-truck-wheel-back-right",
+        "meshName": "wheel-back-right",
+        "displayName": "Rear right wheel",
+        "category": "wheel",
+        "allowedModifications": ["material"],
+        "inspectable": true,
+        "customizable": true
+      }
+    ],
+    "customizationOptions": ["Body material", "Wheels material"]
+  },
+  {
     "id": "bmw-3-series",
     "manufacturer": "BMW",
     "model": "3 Series",

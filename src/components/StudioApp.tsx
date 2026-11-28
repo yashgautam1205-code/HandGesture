@@ -6,6 +6,11 @@ import type { VehicleEntry } from "../store/studio";
 import { createProposalDesignChange, PROCEDURAL_COMPONENTS } from "../ai/designChange";
 import type { LoadedVehicle, ModelProgress } from "../engine/modelLoader";
 import { parseProject, serializeProject } from "../engine/projectConfig";
+import { CAMERA_VIEWS } from "../viewer/cameraSystem";
+import {
+  DEFAULT_SHOWROOM_ENVIRONMENT,
+  SHOWROOM_ENVIRONMENTS,
+} from "../viewer/showroomEnvironments";
 import {
   getVehicleCatalogueRecord,
   VEHICLE_CATALOGUE,
@@ -149,6 +154,12 @@ export default function StudioApp() {
   const isolateComponent = useStudioStore((state) => state.isolateComponent);
   const setShowWireframe = useStudioStore((state) => state.setShowWireframe);
   const setShowMeasurements = useStudioStore((state) => state.setShowMeasurements);
+  const cameraView = useStudioStore((state) => state.cameraView);
+  const requestCameraView = useStudioStore((state) => state.requestCameraView);
+  const presentationMode = useStudioStore((state) => state.presentationMode);
+  const setPresentationMode = useStudioStore((state) => state.setPresentationMode);
+  const autoRotate = useStudioStore((state) => state.autoRotate);
+  const setAutoRotate = useStudioStore((state) => state.setAutoRotate);
   const addReplacementPart = useStudioStore((state) => state.addReplacementPart);
   const updateReplacementPart = useStudioStore((state) => state.updateReplacementPart);
   const updateReplacementPartTransform = useStudioStore((state) => state.updateReplacementPartTransform);
@@ -162,6 +173,7 @@ export default function StudioApp() {
   const [activeTab, setActiveTab] = useState<"library" | "components" | "replacement">("library");
   const [activeStudioCategory, setActiveStudioCategory] = useState<"exterior" | "wheels" | "interior" | "accessories">("exterior");
   const [componentFilter, setComponentFilter] = useState<"all" | "interior">("all");
+  const [componentSearch, setComponentSearch] = useState("");
   const [catalogueSearch, setCatalogueSearch] = useState("");
   const [catalogueManufacturer, setCatalogueManufacturer] = useState("");
   const [catalogueGeneration, setCatalogueGeneration] = useState("");
@@ -327,6 +339,13 @@ export default function StudioApp() {
     componentFilter === "interior"
       ? componentEntries.filter(([id]) => interiorComponentIds.has(id))
       : componentEntries;
+  const searchedComponentEntries = useMemo(() => {
+    const query = componentSearch.trim().toLowerCase();
+    if (!query) return visibleComponentEntries;
+    return visibleComponentEntries.filter(
+      ([id, name]) => name.toLowerCase().includes(query) || id.toLowerCase().includes(query),
+    );
+  }, [componentSearch, visibleComponentEntries]);
   const selectedRotation: [number, number, number] = selectedPart
     ? componentRotations[selectedPart] ?? [0, 0, 0]
     : [0, 0, 0];
@@ -696,6 +715,30 @@ export default function StudioApp() {
       }
     } catch (error) {
       setSaveMessage(error instanceof Error ? error.message : "Could not save project");
+    }
+    window.setTimeout(() => setSaveMessage(""), 3200);
+  }
+
+  async function captureScreenshot() {
+    const canvas = document.querySelector(".workspace canvas") as HTMLCanvasElement | null;
+    if (!canvas) {
+      setSaveMessage("3D viewport is not available");
+      window.setTimeout(() => setSaveMessage(""), 3200);
+      return;
+    }
+    try {
+      const dataUrl = canvas.toDataURL("image/png");
+      if (window.gestureDrive) {
+        setSaveMessage((await window.gestureDrive.saveScreenshot(dataUrl)) ? "Screenshot saved" : "Screenshot cancelled");
+      } else {
+        const anchor = document.createElement("a");
+        anchor.href = dataUrl;
+        anchor.download = "gesture-drive-showroom.png";
+        anchor.click();
+        setSaveMessage("Screenshot exported");
+      }
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : "Could not capture screenshot");
     }
     window.setTimeout(() => setSaveMessage(""), 3200);
   }
@@ -1139,11 +1182,14 @@ export default function StudioApp() {
           <button className="topbar-save tooltip" data-tooltip="Save project" onClick={saveProject} aria-label="Save project">
             {Icons.save}
           </button>
+          <button className="btn btn-ghost btn-icon tooltip" data-tooltip="Capture screenshot" onClick={() => void captureScreenshot()} aria-label="Capture screenshot">
+            {Icons.camera}
+          </button>
         </div>
       </header>
 
       {/* WORKSPACE GRID */}
-      <div className="workspace">
+      <div className="workspace" data-presentation-mode={presentationMode}>
         {/* LEFT SIDEBAR */}
         <aside className="left-sidebar" role="complementary" aria-label="Vehicle library and components">
           <div className="sidebar-tabs" role="tablist" aria-label="Sidebar sections">
@@ -1339,10 +1385,11 @@ export default function StudioApp() {
                         vehicle.year,
                         vehicle.variant,
                       ].filter((value) => value !== null).join(" · ");
+                      const isAvailable = vehicle.asset.status === "available";
                       return (
                         <button
                           key={vehicle.id}
-                          className={`sidebar-item ${selectedCatalogueId === vehicle.id ? "active" : ""}`}
+                          className={`vehicle-card ${selectedCatalogueId === vehicle.id ? "selected" : ""} ${!isAvailable ? "unavailable" : ""}`}
                           onClick={() => {
                             setSelectedCatalogueId(vehicle.id);
                             setRecentCatalogueIds((current) =>
@@ -1351,24 +1398,32 @@ export default function StudioApp() {
                           }}
                           aria-pressed={selectedCatalogueId === vehicle.id}
                         >
-                          <span className="sidebar-item-icon" aria-hidden="true">◈</span>
-                          <span className="sidebar-item-content">
-                            <span className="sidebar-item-title">{vehicle.displayName}</span>
-                            <span className="sidebar-item-subtitle">
-                              {vehicleLabel || "Generation, year and variant not catalogued"}
-                            </span>
-                            <span
-                              className="sidebar-item-subtitle"
-                              style={{ color: vehicle.asset.status === "available" ? "var(--success)" : "var(--warning)" }}
-                            >
-                              {vehicle.asset.status === "available"
-                                ? `${vehicle.asset.accuracy.toUpperCase()} 3D ASSET`
+                          <div className="vehicle-card-header">
+                            <div>
+                              <h4 className="vehicle-card-title">{vehicle.displayName}</h4>
+                              {vehicleLabel && <p className="vehicle-card-subtitle">{vehicleLabel}</p>}
+                            </div>
+                            <span className={`vehicle-card-status ${isAvailable ? "available" : "unavailable"}`}>
+                              {isAvailable
+                                ? `${vehicle.asset.accuracy.toUpperCase()}`
                                 : vehicle.asset.status === "license-review-required"
-                                  ? "LICENSE REVIEW REQUIRED"
-                                  : "3D MODEL NOT AVAILABLE — ASSET REQUIRED"}
+                                  ? "LICENSE REVIEW"
+                                  : "UNAVAILABLE"}
                             </span>
-                          </span>
-                          <span className="sidebar-item-indicator" />
+                          </div>
+                          <div className="vehicle-card-details">
+                            <span className="vehicle-card-detail">
+                              <span className="vehicle-card-detail-label">Body:</span>
+                              <span className="vehicle-card-detail-value">{vehicle.bodyStyle || "Not specified"}</span>
+                            </span>
+                          </div>
+                          {!isAvailable && (
+                            <div style={{ marginTop: "var(--space-2)", fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+                              {vehicle.asset.status === "license-review-required"
+                                ? "License review required before asset can be used"
+                                : "3D model not available — user must provide asset"}
+                            </div>
+                          )}
                         </button>
                       );
                     })}
@@ -1594,48 +1649,66 @@ export default function StudioApp() {
                         ? "DETECTED COMPONENTS"
                         : "PROCEDURAL COMPONENTS"}
                   </h2>
-                  <span className="section-count">{visibleComponentEntries.length}</span>
+                  <span className="section-count">{searchedComponentEntries.length}</span>
                 </div>
+
+                <input
+                  type="search"
+                  value={componentSearch}
+                  onChange={(event) => setComponentSearch(event.target.value)}
+                  placeholder="Search components..."
+                  aria-label="Search components"
+                  style={{ width: "100%", marginBottom: "var(--space-2)" }}
+                />
 
                 <div className="sidebar-list">
-                  {visibleComponentEntries.map(([id, name]) => (
-                    <div
-                      key={id}
-                      className={`sidebar-item ${selectedPart === id ? "active" : ""}`}
-                      onClick={() => setSelectedPart(id)}
-                      onKeyDown={(event) => {
-                        if (event.target !== event.currentTarget) return;
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setSelectedPart(id);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      aria-pressed={selectedPart === id}
-                    >
-                      <div className="sidebar-item-icon" aria-hidden="true">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2" />
-                        </svg>
-                      </div>
-                      <div className="sidebar-item-content">
-                        <span className="sidebar-item-title">{name}</span>
-                      </div>
-                      <button
-                        className="sidebar-item-visibility tooltip"
-                        data-tooltip={componentVisibility[id] === false ? "Show component" : "Hide component"}
-                        onClick={(e) => { e.stopPropagation(); toggleComponentVisible(id); }}
-                        aria-label={componentVisibility[id] === false ? "Show component" : "Hide component"}
-                        aria-pressed={componentVisibility[id] === false}
+                  {searchedComponentEntries.map(([id, name]) => {
+                    const component = vehicleComponents.find((candidate) => candidate.id === id);
+                    return (
+                      <div
+                        key={id}
+                        className={`sidebar-item ${selectedPart === id ? "active" : ""}`}
+                        onClick={() => setSelectedPart(id)}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return;
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedPart(id);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={selectedPart === id}
                       >
-                        {componentVisibility[id] === false ? Icons.visibilityOff : Icons.visibility}
-                      </button>
-                    </div>
-                  ))}
+                        <div className="sidebar-item-icon" aria-hidden="true">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                          </svg>
+                        </div>
+                        <div className="sidebar-item-content">
+                          <span className="sidebar-item-title">{name}</span>
+                          {component && (
+                            <span className="sidebar-item-subtitle">
+                              {component.category} · {component.meshCount} mesh{component.meshCount === 1 ? "" : "es"}
+                              {component.source === "mapping" ? " · mapped" : component.source === "fallback" ? " · merged" : ""}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          className="sidebar-item-visibility tooltip"
+                          data-tooltip={componentVisibility[id] === false ? "Show component" : "Hide component"}
+                          onClick={(e) => { e.stopPropagation(); toggleComponentVisible(id); }}
+                          aria-label={componentVisibility[id] === false ? "Show component" : "Hide component"}
+                          aria-pressed={componentVisibility[id] === false}
+                        >
+                          {componentVisibility[id] === false ? Icons.visibilityOff : Icons.visibility}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {componentFilter === "interior" && visibleComponentEntries.length === 0 && (
+                {componentFilter === "interior" && searchedComponentEntries.length === 0 && (
                   <div className="component-empty-state" role="status">
                     <strong>No editable interior components detected.</strong>
                     <span>
@@ -1657,6 +1730,30 @@ export default function StudioApp() {
                       <span className="sidebar-item-title">Return to full vehicle</span>
                     </div>
                   </button>
+                )}
+
+                {selectedComponent && (
+                  <div className="panel component-detail-panel" style={{ marginTop: "var(--space-3)", padding: "var(--space-3)" }}>
+                    <div className="section-header" style={{ marginBottom: "var(--space-2)" }}>
+                      <h3 className="section-title" style={{ fontSize: "var(--text-xs)" }}>COMPONENT DETAIL</h3>
+                      <span className="section-count">{selectedComponent.category}</span>
+                    </div>
+                    <dl className="component-detail-grid">
+                      <dt>Meshes</dt><dd>{selectedComponent.meshCount}</dd>
+                      <dt>Material slots</dt><dd>{selectedComponent.originalMaterialNames.length}</dd>
+                      <dt>Width</dt><dd>{(selectedComponent.bounds.max.x - selectedComponent.bounds.min.x).toFixed(2)}</dd>
+                      <dt>Height</dt><dd>{(selectedComponent.bounds.max.y - selectedComponent.bounds.min.y).toFixed(2)}</dd>
+                      <dt>Depth</dt><dd>{(selectedComponent.bounds.max.z - selectedComponent.bounds.min.z).toFixed(2)}</dd>
+                      <dt>Material edit</dt><dd>{selectedComponent.editable ? "Yes" : "No"}</dd>
+                      <dt>Transform</dt><dd>{selectedComponent.transformable ? "Yes" : "No"}</dd>
+                      <dt>Source</dt><dd>{selectedComponent.source}</dd>
+                    </dl>
+                    {selectedComponent.originalMaterialNames.length > 0 && (
+                      <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: "var(--space-2) 0 0" }}>
+                        Materials: {selectedComponent.originalMaterialNames.join(", ")}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 <div className="sidebar-actions" style={{ marginTop: "var(--space-4)" }}>
@@ -1912,11 +2009,15 @@ export default function StudioApp() {
               onPreviewProposal={prepareAIProposal}
               onApplyProposal={applyAIProposal}
               onCancelPreview={() => setAIPreview(null)}
-              currentCustomization={customization as unknown as Record<string, unknown>}
-              availableComponents={availableProposalComponents}
-              availableParts={replacementParts.map((r) => r.name)}
-              vehicleType={vehicleName}
+              vehicleComponents={vehicleComponents}
+              customization={customization}
+              componentMaterials={componentMaterials}
+              vehicleName={vehicleName}
               isImported={Boolean(vehicleRoot)}
+              assetSource={assetSource}
+              assetVerification={assetVerification}
+              catalogueVehicleId={catalogueVehicleId}
+              replacementParts={replacementParts}
             />
           </div>
         </aside>
@@ -2247,6 +2348,55 @@ export default function StudioApp() {
                         <option value="metallic">Metallic</option>
                         <option value="matte">Matte</option>
                       </select>
+                      <label className="component-paint-slider">
+                        <span>Metallic</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          aria-label="Selected component metallic"
+                          value={selectedOverride?.metallic ?? customization.paintMetallic}
+                          onChange={(event) => setComponentMaterial(selectedPart, { metallic: Number(event.target.value) })}
+                        />
+                      </label>
+                      <label className="component-paint-slider">
+                        <span>Roughness</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          aria-label="Selected component roughness"
+                          value={selectedOverride?.roughness ?? customization.paintRoughness}
+                          onChange={(event) => setComponentMaterial(selectedPart, { roughness: Number(event.target.value) })}
+                        />
+                      </label>
+                      <label className="component-paint-slider">
+                        <span>Opacity</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          aria-label="Selected component opacity"
+                          value={selectedOverride?.opacity ?? 1}
+                          onChange={(event) => setComponentMaterial(selectedPart, { opacity: Number(event.target.value) })}
+                        />
+                      </label>
+                      <button
+                        className="btn btn-ghost btn-icon tooltip"
+                        data-tooltip="Reset component material"
+                        aria-label="Reset component material"
+                        title="Reset component material"
+                        onClick={() => {
+                          const current = { ...componentMaterials };
+                          delete current[selectedPart];
+                          useStudioStore.setState({ componentMaterials: current, statusMessage: "Component material reset" });
+                        }}
+                      >
+                        {Icons.reset}
+                      </button>
                     </div>
                   )}
                 </>
@@ -2643,6 +2793,65 @@ export default function StudioApp() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="field">
+                <label className="field-label">Showroom</label>
+                <div className="segmented-group">
+                  {SHOWROOM_ENVIRONMENTS.map((option) => (
+                    <button
+                      key={option.id}
+                      className={`segment-btn ${(customization.showroomEnvironment ?? DEFAULT_SHOWROOM_ENVIRONMENT) === option.id ? "active" : ""}`}
+                      onClick={() => setCustomization({ showroomEnvironment: option.id })}
+                      aria-pressed={(customization.showroomEnvironment ?? DEFAULT_SHOWROOM_ENVIRONMENT) === option.id}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field">
+                <label className="field-label">Camera</label>
+                <div className="segmented-group">
+                  {CAMERA_VIEWS.map((view) => (
+                    <button
+                      key={view.id}
+                      className={`segment-btn ${cameraView === view.id ? "active" : ""}`}
+                      onClick={() => requestCameraView(view.id)}
+                      aria-pressed={cameraView === view.id}
+                    >
+                      {view.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field">
+                <label className="field-label">Mode</label>
+                <div className="segmented-group">
+                  {(["showroom", "inspection", "customization", "presentation"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      className={`segment-btn ${presentationMode === mode ? "active" : ""}`}
+                      onClick={() => setPresentationMode(mode)}
+                      aria-pressed={presentationMode === mode}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+                {presentationMode === "presentation" && (
+                  <label className="field" style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                    <input
+                      type="checkbox"
+                      checked={autoRotate}
+                      onChange={(event) => setAutoRotate(event.target.checked)}
+                      aria-label="Auto rotate vehicle"
+                    />
+                    <span className="field-label" style={{ margin: 0 }}>Auto rotate</span>
+                  </label>
+                )}
               </div>
 
               <div className="action-group" style={{ marginTop: "var(--space-4)" }}>

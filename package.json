@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && npm run build:electron && electron .\"",
     "build": "npm run build:web && npm run build:electron",
-    "build:web": "tsc -p tsconfig.json && vite build",
+    "build:web": "tsc -p tsconfig.json && vite build --mode web",
     "build:electron": "tsc -p electron/tsconfig.json",
     "test": "vitest run",
     "package:win": "npm run build && electron-builder --win nsis"
@@ -23,17 +23,20 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.5",
+    "@types/electron": "^1.4.38",
     "@types/node": "22.13.4",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
     "@types/three": "0.172.0",
     "@vitejs/plugin-react": "6.3.0",
     "concurrently": "9.1.2",
-    "electron": "45.3.3",
+    "electron": "^43.8.13",
     "electron-builder": "26.18.0",
-    "typescript": "5.7.3",
     "tailwindcss": "4.3.5",
+    "typescript": "5.7.3",
     "vite": "8.3.8",
+    "vite-plugin-electron": "^1.2.0",
+    "vite-plugin-electron-renderer": "^1.0.0",
     "vitest": "5.1.0",
     "wait-on": "8.0.2"
   },

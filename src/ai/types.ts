@@ -3,6 +3,8 @@
  * Strict schemas for modification proposals, provider config, and validation.
  */
 
+import type { VehicleContext } from "./vehicleContext";
+
 export type AICategory =
   | "paint"
   | "material"
@@ -60,13 +62,7 @@ export type AIMessage = {
 
 export type AIChatRequest = {
   prompt: string;
-  context: {
-    currentCustomization: Record<string, unknown>;
-    availableComponents: string[];
-    availableParts: string[];
-    vehicleType: string;
-    isImported: boolean;
-  };
+  context: VehicleContext;
   history: AIMessage[];
   options?: {
     imageGeneration?: boolean;

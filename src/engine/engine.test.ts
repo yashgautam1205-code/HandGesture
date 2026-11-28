@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import * as THREE from "three";
 import {
+  buildComponentHierarchy,
   buildComponentRegistry,
   componentFocusBounds,
   componentForObject,
@@ -224,6 +225,48 @@ describe("vehicle component registry", () => {
     });
     expect(result.components[0].focusPoint.toArray()).toEqual([0.2, 0.1, 0]);
   });
+
+  it("records stable mesh UUIDs, source, and parent for each component", () => {
+    const root = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), new THREE.MeshStandardMaterial());
+    body.name = "BodyShell";
+    root.add(body);
+    const { components } = buildComponentRegistry(root, [{
+      componentId: "shell",
+      meshName: "BodyShell",
+      displayName: "Body shell",
+      category: "body",
+    }]);
+    expect(components).toHaveLength(1);
+    expect(components[0].source).toBe("mapping");
+    expect(components[0].meshUuids).toEqual([body.uuid]);
+    expect(components[0].parentId).toBeNull();
+  });
+
+  it("marks category-detected components with the category source", () => {
+    const root = new THREE.Group();
+    const bonnet = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    bonnet.name = "Bonnet";
+    root.add(bonnet);
+    const { components } = buildComponentRegistry(root);
+    expect(components[0].source).toBe("category");
+    expect(components[0].meshUuids).toHaveLength(1);
+  });
+
+  it("builds a parent/child hierarchy from component parent IDs", () => {
+    const root = new THREE.Group();
+    const parent = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    parent.name = "BodyShell";
+    const child = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    child.name = "Door";
+    root.add(parent);
+    root.add(child);
+    const { components } = buildComponentRegistry(root);
+    const hierarchy = buildComponentHierarchy(components);
+    expect(hierarchy.length).toBeGreaterThanOrEqual(1);
+    const allNodes = [...hierarchy, ...hierarchy.flatMap((node) => node.children)];
+    expect(allNodes.every((node) => node.component.meshUuids.length > 0)).toBe(true);
+  });
 });
 
 describe("GLB and glTF loading", () => {
@@ -356,6 +399,37 @@ describe("imported material and project persistence", () => {
     controller.dispose();
   });
 
+  it("applies emissive and opacity overrides and round-trips them through project serialization", () => {
+    const root = new THREE.Group();
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(),
+      new THREE.MeshStandardMaterial({ color: "#222222" }),
+    );
+    mesh.name = "Headlight";
+    root.add(mesh);
+    const { components } = buildComponentRegistry(root);
+    const controller = new MaterialController(root, components);
+    controller.apply(customization, {
+      [components[0].id]: { color: "#d9f6ff", finish: "gloss", emissive: "#71d9ff", opacity: 0.6 },
+    });
+    const updated = mesh.material as THREE.MeshStandardMaterial;
+    expect(updated.emissive.getHexString()).toBe("71d9ff");
+    expect(updated.opacity).toBeCloseTo(0.6);
+    expect(updated.transparent).toBe(true);
+    controller.dispose();
+
+    const project = parseProject(serializeProject(
+      null,
+      customization,
+      { [components[0].id]: { color: "#d9f6ff", finish: "gloss", emissive: "#71d9ff", opacity: 0.6 } },
+      {},
+    ));
+    expect(project.componentMaterials[components[0].id]).toMatchObject({
+      emissive: "#71d9ff",
+      opacity: 0.6,
+    });
+  });
+
   it("cleans up unused vehicle resources without throwing", () => {
     const root = new THREE.Group();
     root.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
@@ -414,6 +488,16 @@ describe("imported material and project persistence", () => {
     expect(legacy.model.source === "imported" && legacy.model.assetVerification).toBeUndefined();
   });
 
+  it("round-trips the showroom environment preference without dropping other customization", () => {
+    const withShowroom = { ...customization, showroomEnvironment: "cyber-night" };
+    const project = parseProject(serializeProject(null, withShowroom, {}, {}));
+    expect(project.customization.showroomEnvironment).toBe("cyber-night");
+    expect(project.customization.paint).toBe(withShowroom.paint);
+
+    const withoutShowroom = parseProject(serializeProject(null, customization, {}, {}));
+    expect(withoutShowroom.customization.showroomEnvironment).toBeUndefined();
+  });
+
   it("round-trips replacement parts and gesture settings", () => {
     const partAsset = {
       name: "wheel.glb",
@@ -431,6 +515,8 @@ describe("imported material and project persistence", () => {
       pinchThreshold: 0.5,
       calibrationHandScale: 0.2,
       pointDwellMs: 650,
+      pinchDwellMs: 600,
+      confirmHoldMs: 800,
       twoHandZoom: false,
       trackingLostTimeoutMs: 4000,
     };
@@ -464,8 +550,8 @@ describe("imported material and project persistence", () => {
 
 describe("vehicle catalogue", () => {
   it("validates the catalogue and keeps unsupported targets unavailable", () => {
-    expect(VEHICLE_CATALOGUE).toHaveLength(19);
-    expect(VEHICLE_CATALOGUE.filter((vehicle) => vehicle.id !== "bmw-m4")
+    expect(VEHICLE_CATALOGUE).toHaveLength(25);
+    expect(VEHICLE_CATALOGUE.filter((vehicle) => !["bmw-m4", "toy-car", "car-concept", "kenney-sedan", "kenney-suv", "kenney-race", "kenney-truck"].includes(vehicle.id))
       .every((vehicle) => vehicle.asset.status === "unavailable")).toBe(true);
     expect(VEHICLE_CATALOGUE.every((vehicle) => vehicle.specifications === null)).toBe(true);
     expect(VEHICLE_CATALOGUE.find((vehicle) => vehicle.id === "bmw-m4")).toMatchObject({
@@ -481,6 +567,17 @@ describe("vehicle catalogue", () => {
       components: [
         { meshName: "BodyParts_1", category: "body", componentId: "bmw-m4-body-assembly" },
         { meshName: "WHeelsandrims_2", category: "wheel", componentId: "bmw-m4-wheel-assembly" },
+      ],
+    });
+    expect(VEHICLE_CATALOGUE.find((vehicle) => vehicle.id === "toy-car")).toMatchObject({
+      displayName: "Toy Car",
+      asset: {
+        status: "available",
+        accuracy: "verified",
+        mainFile: "vehicles/toy-car.glb",
+      },
+      components: [
+        { meshName: "ToyCar", category: "body", componentId: "toycar-body" },
       ],
     });
   });
@@ -742,7 +839,9 @@ describe("vehicle catalogue", () => {
   });
 
   it("reports a missing 3D asset instead of falling back to procedural geometry", async () => {
-    await expect(loadCatalogueVehicle(VEHICLE_CATALOGUE[0])).rejects.toThrow(
+    const unavailableVehicle = VEHICLE_CATALOGUE.find((v) => v.id === "bmw-3-series");
+    if (!unavailableVehicle) throw new Error("Test vehicle not found");
+    await expect(loadCatalogueVehicle(unavailableVehicle)).rejects.toThrow(
       "3D MODEL NOT AVAILABLE — ASSET REQUIRED",
     );
   });

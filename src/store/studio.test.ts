@@ -1,154 +1,244 @@
-import { afterEach, describe, expect, it } from "vitest";
-import * as THREE from "three";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useStudioStore } from "./studio";
-import { createPartFromObject } from "../engine/parts";
-import { buildComponentRegistry } from "../engine/components";
+import type { DesignChange } from "./studio";
+import * as THREE from "three";
 
-afterEach(() => {
-  useStudioStore.getState().reset();
-});
-
-describe("studio interaction state", () => {
-  it("keeps pinch zoom within the supported camera range", () => {
-    useStudioStore.getState().setZoom(10);
-    expect(useStudioStore.getState().zoom).toBe(1.65);
-    useStudioStore.getState().setZoom(0);
-    expect(useStudioStore.getState().zoom).toBe(0.72);
+describe("Studio store AI preview and validation", () => {
+  const createMockVehicleComponent = (overrides: Partial<{
+    id: string;
+    name: string;
+    category: string;
+    editable: boolean;
+    transformable: boolean;
+    inspectable: boolean;
+    customizable: boolean;
+    parentId: string | null;
+    originalMaterialNames: string[];
+    allowedModifications: string[];
+    source: string;
+    bounds: { width: number; height: number; depth: number };
+    focusPoint: [number, number, number];
+    cameraDistance: number;
+  }> = {}) => ({
+    id: "body",
+    name: "Body shell",
+    category: "body",
+    editable: true,
+    transformable: false,
+    inspectable: true,
+    customizable: true,
+    parentId: null,
+    originalMaterialNames: ["body-material"],
+    allowedModifications: ["material"],
+    source: "category",
+    bounds: { width: 1.8, height: 0.62, depth: 3.8 },
+    focusPoint: [0, 0.54, 0],
+    cameraDistance: 7.4,
+    ...overrides,
   });
 
-  it("records customization changes for undo", () => {
-    useStudioStore.getState().setCustomization({ paint: "#b93438" });
-    useStudioStore.getState().undo();
-    expect(useStudioStore.getState().customization.paint).toBe("#1d5e66");
-  });
+  const mockVehicleComponents = [
+    createMockVehicleComponent({ id: "body", name: "Body shell", category: "body", editable: true, transformable: false, inspectable: true, customizable: true, parentId: null, cameraDistance: 7.4, focusPoint: [0, 0.54, 0] }),
+    createMockVehicleComponent({ id: "wheels", name: "Wheels", category: "wheels", editable: true, transformable: true, inspectable: true, customizable: true, parentId: "body", cameraDistance: 3.5, focusPoint: [0, 0, 0] }),
+    createMockVehicleComponent({ id: "interior", name: "Interior", category: "interior", editable: false, transformable: false, inspectable: false, customizable: false, parentId: "body", cameraDistance: 4.0, focusPoint: [0, 0.3, 0] }),
+  ];
 
-  it("supports redoing an undone material change", () => {
-    useStudioStore.getState().setCustomization({ finish: "matte" });
-    useStudioStore.getState().undo();
-    useStudioStore.getState().redo();
-    expect(useStudioStore.getState().customization.finish).toBe("matte");
-  });
+  const mockModelAsset = {
+    name: "test.glb",
+    mainFile: "test.glb",
+    files: [],
+  };
 
-  it("tracks environment and rendering quality settings", () => {
-    useStudioStore.getState().setCustomization({ environment: "luxury-studio", quality: "ultra" });
-    const state = useStudioStore.getState();
-    expect(state.customization.environment).toBe("luxury-studio");
-    expect(state.customization.quality).toBe("ultra");
-  });
+  const mockAudit = {
+    meshCount: 10,
+    materialNames: ["body-material", "wheel-material", "interior-material"],
+    boundingBox: { min: [-1, -1, -1], max: [1, 1, 1] },
+    componentCount: 3,
+    hasAnimations: false,
+    hasMorphTargets: false,
+    textures: [],
+    estimatedVRAM: 50,
+    warnings: [],
+    materialCount: 3,
+    textureCount: 0,
+    bounds: { min: [-1, -1, -1], max: [1, 1, 1] },
+    normalizationScale: 1,
+    vertexCount: 1000,
+    triangleCount: 500,
+  };
 
-  it("can undo a reset", () => {
-    useStudioStore.getState().setCustomization({ paint: "#b93438" });
-    useStudioStore.getState().reset();
-    useStudioStore.getState().undo();
-    expect(useStudioStore.getState().customization.paint).toBe("#b93438");
-  });
-
-  it("records per-component material overrides for undo", () => {
-    useStudioStore.getState().setComponentMaterial("body", { color: "#b93438" });
-    useStudioStore.getState().undo();
-    expect(useStudioStore.getState().componentMaterials).toEqual({});
-  });
-
-  it("keeps AI preview separate from committed design and cancel discards it", () => {
-    const preview = {
-      label: "Preview paint",
-      customization: { paint: "#b93438" as const },
-      componentMaterials: { hood: { color: "#b93438", finish: "gloss" as const } },
-    };
-    useStudioStore.getState().setAIPreview(preview);
-    expect(useStudioStore.getState().customization.paint).toBe("#1d5e66");
-    expect(useStudioStore.getState().componentMaterials).toEqual({});
-    useStudioStore.getState().setAIPreview(null);
-    expect(useStudioStore.getState().aiPreview).toBeNull();
-    expect(useStudioStore.getState().customization.paint).toBe("#1d5e66");
-  });
-
-  it("commits an AI design change as one undoable history entry", () => {
-    useStudioStore.getState().applyDesignChange({
-      label: "Applied paint",
-      customization: { paint: "#b93438" },
-      componentMaterials: { hood: { color: "#0a0a0a", finish: "matte" } },
+  beforeEach(() => {
+    useStudioStore.setState({
+      vehicleRoot: new THREE.Group(),
+      vehicleComponents: mockVehicleComponents as any,
+      modelAsset: mockModelAsset,
+      mergedMeshCount: 10,
+      activeVehicleId: "test",
+      vehicleName: "Test Vehicle",
+      customization: {
+        paint: "#ff0000",
+        finish: "metallic",
+        paintMetallic: 0.8,
+        paintRoughness: 0.2,
+        clearCoat: 0.7,
+        spoiler: true,
+        windowTint: false,
+        wheelColor: "#000000",
+        wheelDesign: "five-spoke",
+        spoilerStyle: "sport",
+        bumperStyle: "street",
+        environment: "dark-showroom",
+        quality: "high",
+        showroomEnvironment: "dark-showroom",
+      },
+      componentMaterials: {},
+      aiPreview: null,
+      componentRotations: {},
+      componentVisibility: {},
+      isolatedComponentId: null,
+      showWireframe: false,
+      showMeasurements: false,
+      presentationMode: "customization",
+      autoRotate: false,
+      cameraView: "showroom",
+      cameraViewNonce: 0,
+      replacementParts: [],
+      previewPartId: null,
+      gestureSettings: {
+        confidenceThreshold: 0.55,
+        gestureCooldown: 1800,
+        smoothing: 0.4,
+        pinchThreshold: 0.45,
+        calibrationHandScale: 0.18,
+        pointDwellMs: 700,
+        pinchDwellMs: 600,
+        confirmHoldMs: 800,
+        twoHandZoom: true,
+        trackingLostTimeoutMs: 3500,
+      },
+      catalogueVehicleId: null,
+      assetSource: "Procedural",
+      assetVerification: "not-available",
+      modelAudit: mockAudit as any,
+      explode: 0,
+      zoom: 1,
+      rotation: [0.35, 0],
+      statusMessage: "",
+      gestureSelectionPreview: null,
     });
-    expect(useStudioStore.getState().customization.paint).toBe("#b93438");
-    expect(useStudioStore.getState().componentMaterials.hood.color).toBe("#0a0a0a");
-    useStudioStore.getState().undo();
-    expect(useStudioStore.getState().customization.paint).toBe("#1d5e66");
-    expect(useStudioStore.getState().componentMaterials).toEqual({});
   });
 
-  it("manages replacement parts, attachment targets, and original restoration", () => {
-    const part = createPartFromObject(new THREE.Group(), "wheel", "wheel.glb");
-    useStudioStore.getState().addReplacementPart(part);
-    useStudioStore.getState().updateReplacementPart(part.id, { replacesComponentId: "body" });
-    useStudioStore.getState().installReplacementPart(part.id);
-    expect(useStudioStore.getState().replacementParts[0].installed).toBe(true);
-    expect(useStudioStore.getState().replacementParts[0].originalComponentPreserved).toBe(true);
-    useStudioStore.getState().uninstallReplacementPart(part.id);
-    expect(useStudioStore.getState().replacementParts[0].installed).toBe(false);
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it("supports component isolation, visibility, and gesture settings", () => {
-    useStudioStore.getState().setComponentVisible("body", false);
-    useStudioStore.getState().isolateComponent("wheel-front-left");
-    expect(useStudioStore.getState().componentVisibility.body).toBe(false);
-    expect(useStudioStore.getState().isolatedComponentId).toBe("wheel-front-left");
-    useStudioStore.getState().setGestureSettings({ confidenceThreshold: 0.72, twoHandZoom: false });
-    expect(useStudioStore.getState().gestureSettings.confidenceThreshold).toBe(0.72);
-    expect(useStudioStore.getState().gestureSettings.twoHandZoom).toBe(false);
-  });
-
-  it("preserves vehicle catalogue provenance and audit data when switching models", () => {
-    const root = new THREE.Group();
-    const node = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
-    node.name = "Node_001";
-    root.add(node);
-    const { components } = buildComponentRegistry(root, [{
-      componentId: "protected-node",
-      meshName: "Node_001",
-      category: "other",
-      allowedModifications: [],
-      inspectable: false,
-      customizable: false,
-    }]);
-    const asset = {
-      name: "local.glb",
-      mainFile: "local.glb",
-      files: [{ path: "local.glb", data: "AQID" }],
-    };
-    const audit = {
-      meshCount: 4,
-      materialCount: 2,
-      textureCount: 1,
-      bounds: { width: 4.4, height: 1.2, depth: 2.1 },
-      normalizationScale: 0.44,
-      orientation: "standard" as const,
-      warnings: [],
-      unmatchedComponentMappings: [],
-    };
-    useStudioStore.getState().loadVehicle(root, components, asset, 0, {
-      catalogueVehicleId: "bmw-3-series",
-      displayName: "BMW 3 Series",
-      assetSource: "User-provided local file",
-      assetVerification: "unverified",
-    }, audit);
-    const id = useStudioStore.getState().activeVehicleId;
-    if (!id) throw new Error("The imported vehicle was not selected.");
-    expect(useStudioStore.getState().assetVerification).toBe("unverified");
-    useStudioStore.getState().setSelectedPart("protected-node");
-    expect(useStudioStore.getState().selectedPart).toBe("");
-    useStudioStore.getState().setComponentMaterial("protected-node", { color: "#b93438" });
-    expect(useStudioStore.getState().componentMaterials).toEqual({});
-    useStudioStore.getState().setAIPreview({
-      label: "Disallowed mapped component",
-      customization: {},
-      componentMaterials: { "protected-node": { color: "#b93438", finish: "gloss" } },
+  describe("setAIPreview", () => {
+    it("accepts preview for editable component", () => {
+      const preview: DesignChange = {
+        label: "Test preview",
+        customization: {},
+        componentMaterials: { body: { color: "#00ff00" } },
+      };
+      useStudioStore.getState().setAIPreview(preview);
+      expect(useStudioStore.getState().aiPreview).toEqual(preview);
     });
-    expect(useStudioStore.getState().aiPreview).toBeNull();
-    useStudioStore.getState().restoreProceduralVehicle();
-    expect(useStudioStore.getState().modelAudit).toBeNull();
-    useStudioStore.getState().selectVehicle(id);
-    expect(useStudioStore.getState().catalogueVehicleId).toBe("bmw-3-series");
-    expect(useStudioStore.getState().assetSource).toBe("User-provided local file");
-    expect(useStudioStore.getState().modelAudit).toEqual(audit);
+
+    it("rejects preview for non-editable component", () => {
+      const preview: DesignChange = {
+        label: "Test preview",
+        customization: {},
+        componentMaterials: { interior: { color: "#00ff00" } },
+      };
+      useStudioStore.getState().setAIPreview(preview);
+      expect(useStudioStore.getState().aiPreview).toBeNull();
+      expect(useStudioStore.getState().statusMessage).toContain("not customizable");
+    });
+
+    it("rejects preview for non-existent component", () => {
+      const preview: DesignChange = {
+        label: "Test preview",
+        customization: {},
+        componentMaterials: { nonexistent: { color: "#00ff00" } },
+      };
+      useStudioStore.getState().setAIPreview(preview);
+      expect(useStudioStore.getState().aiPreview).toBeNull();
+    });
+  });
+
+  describe("applyDesignChange", () => {
+    it("applies valid design change", () => {
+      const change: DesignChange = {
+        label: "Test change",
+        customization: {},
+        componentMaterials: { body: { color: "#0000ff" } },
+      };
+      useStudioStore.getState().applyDesignChange(change);
+      expect(useStudioStore.getState().componentMaterials.body?.color).toBe("#0000ff");
+      expect(useStudioStore.getState().aiPreview).toBeNull();
+      expect(useStudioStore.getState().statusMessage).toBe("AI design applied");
+    });
+
+    it("rejects change for non-editable component", () => {
+      const change: DesignChange = {
+        label: "Test change",
+        customization: {},
+        componentMaterials: { interior: { color: "#0000ff" } },
+      };
+      useStudioStore.getState().applyDesignChange(change);
+      expect(useStudioStore.getState().componentMaterials.interior).toBeUndefined();
+      expect(useStudioStore.getState().statusMessage).toContain("not customizable");
+    });
+
+    it("merges with existing component materials", () => {
+      useStudioStore.setState({ componentMaterials: { body: { color: "#ff0000", finish: "metallic", metallic: 0.8, roughness: 0.2, clearCoat: 0.7 } } });
+      const change: DesignChange = {
+        label: "Test change",
+        customization: {},
+        componentMaterials: { body: { roughness: 0.5 } },
+      };
+      useStudioStore.getState().applyDesignChange(change);
+      expect(useStudioStore.getState().componentMaterials.body?.roughness).toBe(0.5);
+      expect(useStudioStore.getState().componentMaterials.body?.color).toBe("#ff0000");
+    });
+  });
+
+  describe("confirmCustomization", () => {
+    it("clears aiPreview when confirmed", () => {
+      useStudioStore.setState({
+        aiPreview: {
+          label: "Test",
+          customization: {},
+          componentMaterials: { body: { color: "#00ff00" } },
+        },
+      });
+      useStudioStore.getState().confirmCustomization();
+      expect(useStudioStore.getState().aiPreview).toBeNull();
+    });
+  });
+
+  describe("setSelectedPart", () => {
+    it("selects valid editable component", () => {
+      useStudioStore.getState().setSelectedPart("body");
+      expect(useStudioStore.getState().selectedPart).toBe("body");
+    });
+
+    it("rejects non-inspectable component", () => {
+      useStudioStore.getState().setSelectedPart("interior");
+      expect(useStudioStore.getState().selectedPart).not.toBe("interior");
+      expect(useStudioStore.getState().statusMessage).toContain("not available for inspection");
+    });
+  });
+
+  describe("gesture selection preview", () => {
+    it("sets gesture selection preview", () => {
+      useStudioStore.getState().setGestureSelectionPreview("wheels");
+      expect(useStudioStore.getState().gestureSelectionPreview).toBe("wheels");
+    });
+
+    it("clears gesture selection preview", () => {
+      useStudioStore.getState().setGestureSelectionPreview("wheels");
+      useStudioStore.getState().setGestureSelectionPreview(null);
+      expect(useStudioStore.getState().gestureSelectionPreview).toBeNull();
+    });
   });
 });

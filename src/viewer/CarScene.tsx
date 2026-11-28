@@ -11,6 +11,20 @@ import {
 } from "../engine/components";
 import { MaterialController } from "../engine/materialController";
 import { applyPartPlacement } from "../engine/parts";
+import {
+  CAMERA_VIEWS,
+  cameraPositionForView,
+  cameraTargetForView,
+  computeVehicleFraming,
+  fitDistanceForFov,
+  type CameraViewId,
+  type VehicleFraming,
+} from "./cameraSystem";
+import {
+  DEFAULT_SHOWROOM_ENVIRONMENT,
+  getShowroomEnvironment,
+  type ShowroomEnvironmentId,
+} from "./showroomEnvironments";
 
 const PART_FOCUS: Record<string, [number, number, number]> = {
   body: [0, 0.54, 0],
@@ -160,6 +174,15 @@ function Car({
           (override.finish === "matte" ? 0.88 : override.finish === "gloss" ? 0.16 : 0.28);
       }
       if ("clearcoat" in material) material.clearcoat = override.clearCoat ?? 0.7;
+      const emissiveOverride = (override as { emissive?: string }).emissive;
+      if (emissiveOverride && "emissive" in material && material.emissive) {
+        (material.emissive as THREE.Color).set(emissiveOverride);
+      }
+      const opacityOverride = (override as { opacity?: number }).opacity;
+      if (opacityOverride !== undefined && "opacity" in material) {
+        material.opacity = opacityOverride;
+        material.transparent = opacityOverride < 1;
+      }
       result.set(id, material);
     }
     return result;
@@ -417,7 +440,10 @@ function StudioStage() {
   const cameraOffset = useRef(new THREE.Vector3());
   const previousZoom = useRef(1);
   const previousFocusPart = useRef("");
-  const { camera, scene, gl } = useThree();
+  const framingRef = useRef<VehicleFraming | null>(null);
+  const lastFramingRef = useRef<VehicleFraming | null>(null);
+  const appliedViewNonce = useRef(-1);
+  const { camera, scene, gl, size } = useThree();
   const bindRaycast = useStudioStore((state) => state.bindRaycast);
   const vehicleRoot = useStudioStore((state) => state.vehicleRoot);
   const vehicleComponents = useStudioStore((state) => state.vehicleComponents);
@@ -426,6 +452,12 @@ function StudioStage() {
   const componentMaterials = useStudioStore((state) => state.componentMaterials);
   const aiPreview = useStudioStore((state) => state.aiPreview);
   const showWireframe = useStudioStore((state) => state.showWireframe);
+  const cameraView = useStudioStore((state) => state.cameraView);
+  const cameraViewNonce = useStudioStore((state) => state.cameraViewNonce);
+  const autoRotate = useStudioStore((state) => state.autoRotate);
+  const presentationMode = useStudioStore((state) => state.presentationMode);
+  const showroomId = (customization.showroomEnvironment as ShowroomEnvironmentId | undefined) ?? DEFAULT_SHOWROOM_ENVIRONMENT;
+  const environment = getShowroomEnvironment(showroomId);
   const previewCustomization = useMemo(
     () => ({ ...customization, ...aiPreview?.customization }),
     [aiPreview, customization],
@@ -445,14 +477,6 @@ function StudioStage() {
     return result;
   }, [aiPreview, componentMaterials, customization]);
   const qualitySettings = QUALITY_SETTINGS[customization.quality];
-  const reflectionBackdrop = customization.environment === "daylight" ? "#9ba9b2" : "#182731";
-  const reflectionLight = customization.environment === "luxury-studio"
-    ? "#ffe0b2"
-    : customization.environment === "daylight"
-      ? "#fff5dc"
-      : customization.environment === "neutral-inspection"
-        ? "#d9efff"
-        : "#8cecff";
 
   useEffect(() => {
     const raycaster = new THREE.Raycaster();
@@ -486,12 +510,30 @@ function StudioStage() {
     };
   }, [bindRaycast, camera, gl, scene, vehicleComponents]);
 
+  useEffect(() => {
+    if (cameraViewNonce === appliedViewNonce.current) return;
+    appliedViewNonce.current = cameraViewNonce;
+    const framing = framingRef.current;
+    if (!framing || !controls.current) return;
+    const view = (CAMERA_VIEWS.some((candidate) => candidate.id === cameraView) ? cameraView : "showroom") as CameraViewId;
+    const position = cameraPositionForView(framing, view);
+    camera.position.copy(position);
+    controls.current.target.copy(cameraTargetForView(framing));
+    controls.current.update();
+    const state = useStudioStore.getState();
+    state.setZoom(1);
+  }, [cameraViewNonce, cameraView, camera]);
+
   useFrame((_, delta) => {
-    const { rotation, zoom, selectedPart, explode, componentRotations, componentVisibility, isolatedComponentId, replacementParts } =
-      useStudioStore.getState();
+    const state = useStudioStore.getState();
+    const { rotation, zoom, explode, componentRotations, componentVisibility, isolatedComponentId, replacementParts } = state;
     if (group.current) {
-      group.current.rotation.y = THREE.MathUtils.damp(group.current.rotation.y, rotation[0], 5, delta);
-      group.current.rotation.x = THREE.MathUtils.damp(group.current.rotation.x, rotation[1], 5, delta);
+      if (autoRotate && presentationMode === "presentation") {
+        group.current.rotation.y += delta * 0.25;
+      } else {
+        group.current.rotation.y = THREE.MathUtils.damp(group.current.rotation.y, rotation[0], 5, delta);
+        group.current.rotation.x = THREE.MathUtils.damp(group.current.rotation.x, rotation[1], 5, delta);
+      }
     }
     if (!controls.current) return;
     let activeComponent: VehicleComponent | undefined;
@@ -509,9 +551,32 @@ function StudioStage() {
       }
       group.current?.updateMatrixWorld(true);
       vehicleRoot.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(vehicleRoot);
+      if (!bounds.isEmpty()) {
+        const framing = computeVehicleFraming(bounds);
+        const previous = lastFramingRef.current;
+        lastFramingRef.current = framing;
+        framingRef.current = framing;
+        controls.current.maxDistance = Math.max(11, framing.distance * 1.8);
+        const framingChanged =
+          !previous ||
+          Math.abs(previous.radius - framing.radius) > 0.01 ||
+          previous.center.distanceToSquared(framing.center) > 0.0001;
+        if (framingChanged && appliedViewNonce.current === state.cameraViewNonce) {
+          const view = (CAMERA_VIEWS.some((candidate) => candidate.id === state.cameraView)
+            ? state.cameraView
+            : "showroom") as CameraViewId;
+          camera.position.copy(cameraPositionForView(framing, view));
+          controls.current.target.copy(cameraTargetForView(framing));
+          controls.current.update();
+        }
+      }
       activeComponent = vehicleComponents.find((component) => component.id === selectedPart);
       if (activeComponent) {
         focusTarget.current.copy(activeComponent.focusPoint);
+        if (group.current) focusTarget.current.applyMatrix4(group.current.matrixWorld);
+      } else if (framingRef.current) {
+        focusTarget.current.copy(framingRef.current.center);
         if (group.current) focusTarget.current.applyMatrix4(group.current.matrixWorld);
       } else {
         focusTarget.current.copy(new THREE.Box3().setFromObject(vehicleRoot).getCenter(new THREE.Vector3()));
@@ -519,6 +584,11 @@ function StudioStage() {
     } else {
       focusTarget.current.set(...(PART_FOCUS[selectedPart] ?? PART_FOCUS.body));
       if (group.current) focusTarget.current.applyMatrix4(group.current.matrixWorld);
+      if (!framingRef.current) {
+        framingRef.current = computeVehicleFraming(
+          new THREE.Box3(new THREE.Vector3(-1.2, 0, -2.2), new THREE.Vector3(1.2, 1.6, 2.2)),
+        );
+      }
     }
     const target = controls.current.target;
     target.lerp(focusTarget.current, 1 - Math.exp(-delta * 5));
@@ -526,8 +596,12 @@ function StudioStage() {
     camera.position.add(targetDelta.current);
     previousTarget.current.copy(target);
     cameraOffset.current.copy(camera.position).sub(target);
-    const focusDistance = activeComponent?.cameraDistance ?? 7.4;
-    controls.current.minDistance = activeComponent ? Math.min(4.5, focusDistance * 0.7) : 4.5;
+    const framing = framingRef.current;
+    const fitDistance = framing
+      ? fitDistanceForFov(framing.radius, (camera as THREE.PerspectiveCamera).fov ?? 36, size.width / Math.max(size.height, 1))
+      : 7.4;
+    const focusDistance = activeComponent?.cameraDistance ?? fitDistance;
+    controls.current.minDistance = activeComponent ? Math.min(4.5, focusDistance * 0.7) : Math.max(3.2, fitDistance * 0.55);
     if (previousFocusPart.current !== selectedPart) {
       cameraOffset.current.setLength(focusDistance / zoom);
       previousFocusPart.current = selectedPart;
@@ -539,20 +613,23 @@ function StudioStage() {
     camera.position.copy(target).add(cameraOffset.current);
   });
 
+  const isDaylight = showroomId === "outdoor-daylight" || showroomId === "minimal-white";
+
   return (
     <>
-      <color attach="background" args={[customization.environment === "daylight" ? "#dae7f1" : "#0c1116"]} />
-      <fog attach="fog" args={[customization.environment === "daylight" ? "#dfeaf3" : "#0b1014", 7.5, 17]} />
-      <ambientLight intensity={customization.environment === "daylight" ? 0.9 : 0.75} color={customization.environment === "daylight" ? "#f4f1e7" : "#dfe8eb"} />
+      <color attach="background" args={[environment.background]} />
+      <fog attach="fog" args={[environment.fog, environment.fogNear, environment.fogFar]} />
+      <ambientLight intensity={environment.ambient} color={environment.ambientColor} />
       <hemisphereLight
-        intensity={customization.environment === "daylight" ? 0.8 : 0.5}
-        args={[customization.environment === "daylight" ? "#fcf2db" : "#a9cfe4", "#0c1219", 1]}
+        intensity={environment.hemisphereIntensity}
+        args={[environment.hemisphereSky, environment.hemisphereGround, 1]}
       />
       <spotLight
         position={[4, 8, 5]}
         angle={0.42}
         penumbra={1}
-        intensity={customization.environment === "daylight" ? 230 : 95}
+        intensity={environment.keyIntensity}
+        color={environment.keyColor}
         castShadow
         shadow-mapSize-width={qualitySettings.shadow}
         shadow-mapSize-height={qualitySettings.shadow}
@@ -561,13 +638,13 @@ function StudioStage() {
         position={[-6, 4, -2]}
         angle={0.5}
         penumbra={1}
-        intensity={customization.environment === "daylight" ? 70 : 45}
-        color={customization.environment === "daylight" ? "#f7d7ac" : "#50b9d1"}
+        intensity={environment.rimIntensity}
+        color={environment.rimColor}
       />
-      <pointLight position={[-3.4, 1.8, 2.8]} intensity={24} distance={9} color="#45dff7" />
-      <pointLight position={[3.2, 2.2, -2.8]} intensity={18} distance={10} color="#84aaff" />
+      <pointLight position={[-3.4, 1.8, 2.8]} intensity={isDaylight ? 10 : 24} distance={9} color={environment.rimColor} />
+      <pointLight position={[3.2, 2.2, -2.8]} intensity={isDaylight ? 8 : 18} distance={10} color="#84aaff" />
       <Environment
-        key={customization.environment}
+        key={showroomId}
         background={false}
         resolution={qualitySettings.environmentResolution}
         frames={1}
@@ -575,23 +652,23 @@ function StudioStage() {
       >
         <mesh>
           <sphereGeometry args={[20, 32, 24]} />
-          <meshBasicMaterial color={reflectionBackdrop} side={THREE.BackSide} />
+          <meshBasicMaterial color={environment.reflectionBackdrop} side={THREE.BackSide} />
         </mesh>
         <mesh position={[0, 5, -8]}>
           <planeGeometry args={[8, 3.5]} />
-          <meshBasicMaterial color={reflectionLight} />
+          <meshBasicMaterial color={environment.reflectionLight} />
         </mesh>
         <mesh position={[0, 5, 8]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[8, 3.5]} />
-          <meshBasicMaterial color={reflectionLight} />
+          <meshBasicMaterial color={environment.reflectionLight} />
         </mesh>
         <mesh position={[-8, 5, 0]} rotation={[0, Math.PI / 2, 0]}>
           <planeGeometry args={[7, 3]} />
-          <meshBasicMaterial color={reflectionLight} />
+          <meshBasicMaterial color={environment.reflectionLight} />
         </mesh>
         <mesh position={[8, 5, 0]} rotation={[0, -Math.PI / 2, 0]}>
           <planeGeometry args={[7, 3]} />
-          <meshBasicMaterial color={reflectionLight} />
+          <meshBasicMaterial color={environment.reflectionLight} />
         </mesh>
         <mesh position={[0, 10, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[10, 10]} />
@@ -601,23 +678,23 @@ function StudioStage() {
       <Grid
         position={[0, -0.07, 0]}
         args={[24, 24]}
-        cellColor={customization.environment === "daylight" ? "#d2dfe7" : "#28343d"}
-        sectionColor={customization.environment === "daylight" ? "#a8bdc1" : "#435762"}
+        cellColor={environment.gridCell}
+        sectionColor={environment.gridSection}
         fadeDistance={16}
         fadeStrength={1.4}
         infiniteGrid
       />
       <mesh position={[0, -0.015, 0]} receiveShadow>
         <cylinderGeometry args={[3.22, 3.28, 0.08, 96]} />
-        <meshStandardMaterial color="#101c25" metalness={0.78} roughness={0.36} />
+        <meshStandardMaterial color={environment.floorColor} metalness={environment.floorMetalness} roughness={environment.floorRoughness} />
       </mesh>
       <mesh position={[0, 0.027, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[3.15, 0.014, 8, 128]} />
-        <meshStandardMaterial color="#55e4f6" emissive="#2ecde9" emissiveIntensity={0.55} toneMapped={false} />
+        <meshStandardMaterial color={isDaylight ? "#b8c4cc" : "#55e4f6"} emissive={isDaylight ? "#9aa6ae" : "#2ecde9"} emissiveIntensity={isDaylight ? 0.1 : 0.55} toneMapped={false} />
       </mesh>
       <mesh position={[0, 0.027, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[3.28, 0.006, 6, 128]} />
-        <meshStandardMaterial color="#7abfff" emissive="#3999ee" emissiveIntensity={0.28} toneMapped={false} />
+        <meshStandardMaterial color={isDaylight ? "#c8ced4" : "#7abfff"} emissive={isDaylight ? "#b0b8be" : "#3999ee"} emissiveIntensity={isDaylight ? 0.06 : 0.28} toneMapped={false} />
       </mesh>
       <group ref={group}>
         <group
@@ -654,7 +731,7 @@ function StudioStage() {
         proceduralRoot={group}
         selectedPart={selectedPart}
       />
-      <ContactShadows position={[0, 0.03, 0]} opacity={0.42} scale={9} blur={2.8} far={3.5} />
+      <ContactShadows position={[0, 0.03, 0]} opacity={isDaylight ? 0.3 : 0.42} scale={9} blur={2.8} far={3.5} />
       <OrbitControls
         ref={controls}
         target={[0, 0.72, 0]}
@@ -676,7 +753,7 @@ export default function CarScene() {
       shadows
       camera={{ position: [0, 2.25, 7.4], fov: 36 }}
       dpr={qualitySettings.dpr}
-      gl={{ antialias: quality !== "low", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: qualitySettings.exposure }}
+      gl={{ antialias: quality !== "low", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: qualitySettings.exposure, preserveDrawingBuffer: true }}
     >
       <StudioStage />
     </Canvas>

@@ -171,6 +171,25 @@ export function registerProjectIPC(): void {
     if (result.canceled || result.filePaths.length === 0) return null;
     return readFile(result.filePaths[0], "utf8");
   });
+
+  ipcMain.handle("view:screenshot", async (event, dataUrl: unknown) => {
+    if (!isTrustedRendererURL(event.sender.getURL())) {
+      throw new Error("Screenshot capture is available only to the application window.");
+    }
+    if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/png;base64,")) {
+      throw new TypeError("Screenshot data must be a PNG data URL.");
+    }
+    const base64 = dataUrl.slice("data:image/png;base64,".length);
+    const buffer = Buffer.from(base64, "base64");
+    const result = await dialog.showSaveDialog({
+      title: "Save showroom screenshot",
+      defaultPath: "gesture-drive-showroom.png",
+      filters: [{ name: "PNG Image", extensions: ["png"] }],
+    });
+    if (result.canceled || !result.filePath) return false;
+    await writeFile(result.filePath, buffer);
+    return true;
+  });
 }
 
 ipcMain.handle("ai:status", (event) => {

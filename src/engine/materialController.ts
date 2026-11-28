@@ -31,6 +31,8 @@ function resolveStyle(
   metallic: number;
   roughness: number;
   clearCoat: number;
+  emissive?: string;
+  opacity?: number;
 } {
   if (override) {
     return {
@@ -39,6 +41,8 @@ function resolveStyle(
       metallic: override.metallic ?? (override.finish === "metallic" ? 0.9 : 0.35),
       roughness: override.roughness ?? (override.finish === "matte" ? 0.88 : 0.28),
       clearCoat: override.clearCoat ?? 0.7,
+      emissive: override.emissive,
+      opacity: override.opacity,
     };
   }
   if (BODY_CATEGORIES.has(category)) {
@@ -94,7 +98,15 @@ function applyMaterialStyle(material: SurfaceMaterial, style: ReturnType<typeof 
   if ("clearcoatRoughness" in material) material.clearcoatRoughness = Math.min(0.75, style.roughness * 0.8);
   if ("envMapIntensity" in material) material.envMapIntensity = style.finish === "metallic" ? 1.3 : 0.8;
   if ("transmission" in material) material.transmission = style.finish === "gloss" ? 0.22 : 0.08;
-  if ("opacity" in material) material.opacity = style.finish === "matte" ? 0.95 : 1;
+  if (style.opacity !== undefined && "opacity" in material) {
+    material.opacity = style.opacity;
+    material.transparent = style.opacity < 1;
+  } else if ("opacity" in material) {
+    material.opacity = style.finish === "matte" ? 0.95 : 1;
+  }
+  if (style.emissive && "emissive" in material && material.emissive) {
+    (material.emissive as THREE.Color).set(style.emissive);
+  }
   material.needsUpdate = true;
 }
 

@@ -9,6 +9,12 @@ import {
   smoothLandmarks,
   type Landmark,
 } from "./classifier";
+import {
+  createRecoveryState,
+  updateRecoveryState,
+  getLastKnownPalmCenter,
+  getGestureCooldown,
+} from "./reliability";
 import { useStudioStore } from "../store/studio";
 
 const ASSET_BASE = new URL(import.meta.env.BASE_URL, window.location.href);
@@ -28,9 +34,11 @@ export function useHandTracker() {
   const previousSpreadRef = useRef<number | null>(null);
   const smoothedLandmarksRef = useRef<Landmark[][]>([]);
   const stablePointRef = useRef({ id: "", since: 0 });
+  const stablePinchRef = useRef({ id: "", since: 0, previewed: false });
   const lastConfirmRef = useRef(0);
   const lastPreviewUpdateRef = useRef(0);
   const lastSeenRef = useRef(0);
+  const recoveryStateRef = useRef(createRecoveryState());
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const startRef = useRef<() => Promise<void>>(async () => {});
@@ -178,12 +186,35 @@ export function useHandTracker() {
       current.setHandConfidence(confidence);
     }
 
+    const { isLost, recovered } = updateRecoveryState(
+      recoveryStateRef.current,
+      hands,
+      now,
+      settings.trackingLostTimeoutMs,
+    );
+
+    if (recovered) {
+      const lastPalm = getLastKnownPalmCenter(recoveryStateRef.current);
+      if (lastPalm) {
+        previousPalmRef.current = lastPalm;
+        useStudioStore.setState({ statusMessage: "Tracking recovered" });
+      }
+    }
+
     if (hands.length > 0) {
       lastSeenRef.current = now;
       if (current.trackingLost) current.setTrackingLost(false);
-    } else if (now - lastSeenRef.current > settings.trackingLostTimeoutMs && !current.trackingLost) {
+    } else if (isLost && !current.trackingLost) {
       current.setTrackingLost(true);
       current.setGesture("none");
+      current.setGestureSelectionPreview(null);
+      stablePointRef.current = { id: "", since: 0 };
+      stablePinchRef.current = { id: "", since: 0, previewed: false };
+    }
+
+    if (!meetsConfidenceThreshold(confidences, 1, settings.confidenceThreshold)) {
+      current.setGesture("none");
+      return;
     }
 
     const pinchLimit = settings.pinchThreshold * settings.calibrationHandScale;
@@ -195,6 +226,9 @@ export function useHandTracker() {
         ? rawGesture
         : "none";
     current.setGesture(gesture);
+
+    const gestureCooldown = getGestureCooldown(gesture);
+
     if (current.interactionPaused || gesture === "closed-fist") {
       const firstHand = hands[0]?.length >= 21 ? hands[0] : null;
       previousPalmRef.current = firstHand ? palmCenter(firstHand) : null;
@@ -208,12 +242,39 @@ export function useHandTracker() {
 
     if (gesture === "pinch" && hands[0]) {
       const pinch = distance(hands[0][4], hands[0][8]);
+      const settings = useStudioStore.getState().gestureSettings;
       if (previousPinchRef.current !== null) {
         current.setZoom(current.zoom - (pinch - previousPinchRef.current) * 4);
       }
       previousPinchRef.current = pinch;
+
+      const tip = hands[0][8];
+      const id = useStudioStore.getState().pointAt(tip.x, tip.y);
+      if (id && current.vehicleComponents?.some((c) => c.id === id && c.editable && c.customizable)) {
+        if (id !== stablePinchRef.current.id) {
+          stablePinchRef.current = { id, since: now, previewed: false };
+          current.setGestureSelectionPreview(id);
+        } else if (!stablePinchRef.current.previewed && now - stablePinchRef.current.since > settings.pinchDwellMs) {
+          current.setGestureSelectionPreview(id);
+          stablePinchRef.current = { ...stablePinchRef.current, previewed: true };
+          useStudioStore.setState({ statusMessage: `Previewing ${current.vehicleComponents.find((c) => c.id === id)?.name || id} — pinch to confirm` });
+        } else if (stablePinchRef.current.previewed && now - stablePinchRef.current.since > settings.pinchDwellMs + settings.confirmHoldMs) {
+          current.setSelectedPart(id);
+          current.setGestureSelectionPreview(null);
+          useStudioStore.setState({ statusMessage: `Selected ${current.vehicleComponents.find((c) => c.id === id)?.name || id} — thumbs-up to confirm` });
+        }
+      } else {
+        if (stablePinchRef.current.id) {
+          current.setGestureSelectionPreview(null);
+        }
+        stablePinchRef.current = { id: "", since: 0, previewed: false };
+      }
     } else {
       previousPinchRef.current = null;
+      if (stablePinchRef.current.id) {
+        current.setGestureSelectionPreview(null);
+      }
+      stablePinchRef.current = { id: "", since: 0, previewed: false };
     }
 
     if (gesture === "open-palm" && hands[0]) {
@@ -260,9 +321,12 @@ export function useHandTracker() {
       stablePointRef.current = { id: "", since: 0 };
     }
 
-    if (gesture === "thumbs-up" && performance.now() - lastConfirmRef.current > settings.gestureCooldown) {
-      lastConfirmRef.current = performance.now();
-      useStudioStore.getState().confirmCustomization();
+    if (gesture === "thumbs-up" && now - lastConfirmRef.current > gestureCooldown) {
+      lastConfirmRef.current = now;
+      const state = useStudioStore.getState();
+      if (state.selectedPart && state.selectedPart !== "body") {
+        state.confirmCustomization();
+      }
     }
   }, []);
 

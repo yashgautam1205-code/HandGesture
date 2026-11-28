@@ -18,6 +18,7 @@ export type SpoilerStyle = "sport" | "track";
 export type BumperStyle = "street" | "track";
 export type EnvironmentPreset = "dark-showroom" | "luxury-studio" | "daylight" | "neutral-inspection";
 export type QualityLevel = "low" | "medium" | "high" | "ultra";
+export type PresentationMode = "showroom" | "inspection" | "customization" | "presentation";
 export type GestureSettings = {
   confidenceThreshold: number;
   gestureCooldown: number;
@@ -25,6 +26,8 @@ export type GestureSettings = {
   pinchThreshold: number;
   calibrationHandScale: number;
   pointDwellMs: number;
+  pinchDwellMs: number;
+  confirmHoldMs: number;
   twoHandZoom: boolean;
   trackingLostTimeoutMs: number;
 };
@@ -42,6 +45,7 @@ export type Customization = {
   bumperStyle: BumperStyle;
   environment: EnvironmentPreset;
   quality: QualityLevel;
+  showroomEnvironment?: string;
 };
 export type ComponentMaterialOverride = {
   color: string;
@@ -49,6 +53,8 @@ export type ComponentMaterialOverride = {
   metallic?: number;
   roughness?: number;
   clearCoat?: number;
+  emissive?: string;
+  opacity?: number;
 };
 export type DesignChange = {
   label: string;
@@ -96,6 +102,8 @@ export const DEFAULT_GESTURE_SETTINGS: GestureSettings = {
   pinchThreshold: 0.45,
   calibrationHandScale: 0.18,
   pointDwellMs: 700,
+  pinchDwellMs: 600,
+  confirmHoldMs: 800,
   twoHandZoom: true,
   trackingLostTimeoutMs: 3500,
 };
@@ -119,6 +127,8 @@ function loadGestureSettings(): GestureSettings {
         0.45,
       ),
       pointDwellMs: clamp(value.pointDwellMs ?? DEFAULT_GESTURE_SETTINGS.pointDwellMs, 300, 2000),
+      pinchDwellMs: clamp(value.pinchDwellMs ?? DEFAULT_GESTURE_SETTINGS.pinchDwellMs, 200, 2000),
+      confirmHoldMs: clamp(value.confirmHoldMs ?? DEFAULT_GESTURE_SETTINGS.confirmHoldMs, 200, 2000),
       twoHandZoom: value.twoHandZoom ?? DEFAULT_GESTURE_SETTINGS.twoHandZoom,
       trackingLostTimeoutMs: clamp(
         value.trackingLostTimeoutMs ?? DEFAULT_GESTURE_SETTINGS.trackingLostTimeoutMs,
@@ -158,9 +168,14 @@ type StudioState = {
   isolatedComponentId: string | null;
   showWireframe: boolean;
   showMeasurements: boolean;
+  presentationMode: PresentationMode;
+  autoRotate: boolean;
+  cameraView: string;
+  cameraViewNonce: number;
   replacementParts: ReplacementPart[];
   previewPartId: string | null;
   gestureSettings: GestureSettings;
+  gestureSelectionPreview: string | null;
   vehicleRoot: THREE.Group | null;
   vehicleComponents: VehicleComponent[];
   vehicleLibrary: VehicleEntry[];
@@ -193,6 +208,10 @@ type StudioState = {
   isolateComponent: (id: string | null) => void;
   setShowWireframe: (value: boolean) => void;
   setShowMeasurements: (value: boolean) => void;
+  setPresentationMode: (mode: PresentationMode) => void;
+  setAutoRotate: (value: boolean) => void;
+  requestCameraView: (view: string) => void;
+  setGestureSelectionPreview: (id: string | null) => void;
   addReplacementPart: (part: ReplacementPart) => void;
   updateReplacementPart: (id: string, patch: Partial<ReplacementPart>) => void;
   updateReplacementPartTransform: (id: string, transform: PartTransform) => void;
@@ -260,9 +279,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   isolatedComponentId: null,
   showWireframe: false,
   showMeasurements: false,
+  presentationMode: "customization",
+  autoRotate: false,
+  cameraView: "showroom",
+  cameraViewNonce: 0,
   replacementParts: [],
   previewPartId: null,
   gestureSettings: loadGestureSettings(),
+  gestureSelectionPreview: null,
   vehicleRoot: null,
   vehicleComponents: [],
   vehicleLibrary: [],
@@ -425,6 +449,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     }),
   setShowWireframe: (showWireframe) => set({ showWireframe }),
   setShowMeasurements: (showMeasurements) => set({ showMeasurements }),
+  setPresentationMode: (presentationMode) =>
+    set({ presentationMode, statusMessage: `${presentationMode} mode` }),
+  setAutoRotate: (autoRotate) => set({ autoRotate }),
+  setGestureSelectionPreview: (gestureSelectionPreview) => set({ gestureSelectionPreview }),
+  requestCameraView: (cameraView) =>
+    set((state) => ({ cameraView, cameraViewNonce: state.cameraViewNonce + 1 })),
   addReplacementPart: (part) =>
     set((state) => ({
       replacementParts: [...state.replacementParts, part],
@@ -607,7 +637,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setExplode: (explode) => set({ explode }),
   setZoom: (zoom) => set({ zoom: Math.min(1.65, Math.max(0.72, zoom)) }),
   setRotation: (yaw, pitch) => set({ rotation: [yaw, pitch] }),
-  confirmCustomization: () => set({ statusMessage: "Customization confirmed" }),
+  confirmCustomization: () => set({ aiPreview: null, statusMessage: "Customization confirmed" }),
   reset: () => {
     pushHistory(get());
     set({
@@ -621,6 +651,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       replacementParts: [],
       previewPartId: null,
       aiPreview: null,
+      gestureSelectionPreview: null,
       trackingLost: false,
       selectedPart: get().vehicleRoot ? "" : "body",
       explode: 0,

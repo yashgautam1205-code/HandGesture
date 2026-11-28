@@ -2064,7 +2064,7 @@ input[type="range"]::-moz-range-thumb {
 .bounds-readout span { color: var(--accent-gold); font-weight: var(--font-medium); }
 
 /* --- Component Paint Override --- */
-.component-paint { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--line-subtle); }
+.component-paint { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--line-subtle); }
 
 .component-paint-label { font-size: var(--text-xs); font-weight: var(--font-medium); letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
 
@@ -2485,6 +2485,137 @@ input[type="range"]::-moz-range-thumb {
 
 .ai-cancel-all:hover { border-color: var(--error); color: var(--error); background: var(--error-bg); }
 
+/* --- AI Vehicle Context Indicator --- */
+.ai-vehicle-context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-input);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.ai-vehicle-context .context-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ai-vehicle-context strong {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.context-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  background: var(--bg-panel);
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.context-badge.imported { border-color: var(--accent-blue-dim); color: var(--accent-blue); background: var(--accent-blue-bg); }
+.context-badge.procedural { border-color: var(--accent-gold-dim); color: var(--accent-gold); background: var(--accent-gold-bg); }
+.context-badge.catalogue { border-color: var(--accent-purple-dim); color: var(--accent-purple); background: var(--accent-purple-bg); }
+.context-badge.verified { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+
+/* --- Voice Input Button --- */
+.ai-voice-btn {
+  position: absolute;
+  right: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border: 1px solid var(--line-default);
+  transition: all var(--transition-fast);
+}
+
+.ai-voice-btn:hover:not(:disabled) {
+  background: var(--accent-blue-bg);
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.ai-voice-btn.active {
+  background: var(--error-bg);
+  color: var(--error);
+  border-color: var(--error);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* --- AI Recommendations --- */
+.ai-recommendations {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-subtle);
+}
+
+.recommendations-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.recommendation-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-input);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+}
+
+.rec-component {
+  font-weight: var(--font-semibold);
+  color: var(--accent-blue);
+}
+
+.rec-suggestion {
+  color: var(--text-primary);
+}
+
+.rec-reason {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
 /* ==========================================================================
    REPLACEMENT PARTS EDITOR
    ========================================================================== */
@@ -2644,4 +2775,206 @@ input[type="range"]::-moz-range-thumb {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ==========================================================================
+   PHASE 10 — VEHICLE LIBRARY CARD ENHANCEMENTS
+   ========================================================================== */
+
+.vehicle-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.vehicle-card:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--line-default);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.vehicle-card.selected {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 1px var(--accent-gold), var(--shadow-lg);
+}
+
+.vehicle-card.unavailable {
+  opacity: 0.6;
+}
+
+.vehicle-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-2);
+}
+
+.vehicle-card-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.vehicle-card-subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.vehicle-card-status {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.vehicle-card-status.available {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.vehicle-card-status.unavailable {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.vehicle-card-details {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-subtle);
+}
+
+.vehicle-card-detail {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.vehicle-card-detail-label {
+  color: var(--text-muted);
+}
+
+.vehicle-card-detail-value {
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+
+.download-progress {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+}
+
+.download-progress-bar {
+  height: 4px;
+  background: var(--line-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-1);
+}
+
+.download-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent-blue));
+  transition: width 0.3s ease;
+}
+
+.download-progress-text {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--line-subtle);
+  border-top-color: var(--accent-gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   PHASE 11 — COMPONENT INSPECTOR
+   ========================================================================== */
+
+.component-detail-panel {
+  border-color: var(--line-default);
+  background: var(--bg-elevated);
+}
+
+.component-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.component-detail-grid dt {
+  color: var(--text-muted);
+}
+
+.component-detail-grid dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.component-detail-panel .section-title {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+}
+
+.component-paint-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  min-width: 90px;
+  flex: 1;
+}
+
+.component-paint-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent-gold);
+}
+
+/* Phase 12 — Presentation modes keep the 3D viewport dominant */
+.workspace[data-presentation-mode="presentation"] .left-sidebar,
+.workspace[data-presentation-mode="presentation"] .right-sidebar {
+  opacity: 0.35;
+  transition: opacity var(--transition-base);
+}
+
+.workspace[data-presentation-mode="presentation"] .left-sidebar:hover,
+.workspace[data-presentation-mode="presentation"] .right-sidebar:hover {
+  opacity: 1;
+}
+
+.workspace[data-presentation-mode="showroom"] .right-sidebar {
+  opacity: 0.6;
+  transition: opacity var(--transition-base);
+}
+
+.workspace[data-presentation-mode="showroom"] .right-sidebar:hover {
+  opacity: 1;
 }

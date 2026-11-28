@@ -44,6 +44,8 @@ export type VehicleComponentMapping = {
   customizable?: boolean;
 };
 
+export type ComponentSource = "mapping" | "category" | "fallback";
+
 export type VehicleComponent = {
   id: string;
   name: string;
@@ -63,6 +65,9 @@ export type VehicleComponent = {
   allowedModifications: string[];
   inspectable: boolean;
   customizable: boolean;
+  parentId: string | null;
+  source: ComponentSource;
+  meshUuids: string[];
 };
 
 const CATEGORY_PATTERNS: Array<[ComponentCategory, RegExp]> = [
@@ -158,6 +163,7 @@ export function buildComponentRegistry(
   });
   const components: VehicleComponent[] = [];
   const claimedMeshes = new Set<THREE.Object3D>();
+  const componentIdByObject = new Map<THREE.Object3D, string>();
 
   const addComponent = (object: THREE.Object3D, fallbackName?: string): void => {
     const meshCount = countMeshes(object);
@@ -185,8 +191,10 @@ export function buildComponentRegistry(
           : worldDirection;
     const id = mapping?.componentId ?? `model-${components.length + 1}`;
     const materialNames = new Set<string>();
+    const meshUuids: string[] = [];
     object.traverse((child) => {
       if (!(child as THREE.Mesh).isMesh) return;
+      meshUuids.push(child.uuid);
       const materials = Array.isArray((child as THREE.Mesh).material)
         ? (child as THREE.Mesh).material as THREE.Material[]
         : [(child as THREE.Mesh).material as THREE.Material];
@@ -195,12 +203,24 @@ export function buildComponentRegistry(
       }
     });
     object.userData.gd3dComponentId = id;
+    componentIdByObject.set(object, id);
     object.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.userData.gd3dComponentId = id;
         claimedMeshes.add(child);
       }
     });
+    const parentComponentId =
+      object === root ? null : (() => {
+        let ancestor = object.parent;
+        while (ancestor && ancestor !== root) {
+          const mapped = componentIdByObject.get(ancestor);
+          if (mapped) return mapped;
+          ancestor = ancestor.parent;
+        }
+        return null;
+      })();
+    const source: ComponentSource = mapping ? "mapping" : fallbackName ? "fallback" : "category";
     components.push({
       id,
       name: mapping?.displayName ?? displayName(fallbackName ?? object.name),
@@ -222,6 +242,9 @@ export function buildComponentRegistry(
       allowedModifications,
       inspectable: mapping?.inspectable ?? true,
       customizable,
+      parentId: parentComponentId,
+      source,
+      meshUuids,
     });
   };
 
@@ -345,4 +368,31 @@ export function setComponentMaterial(
       candidate.needsUpdate = true;
     }
   });
+}
+
+export type ComponentHierarchyNode = {
+  component: VehicleComponent;
+  children: ComponentHierarchyNode[];
+};
+
+export function buildComponentHierarchy(components: VehicleComponent[]): ComponentHierarchyNode[] {
+  const nodesById = new Map<string, ComponentHierarchyNode>();
+  for (const component of components) {
+    nodesById.set(component.id, { component, children: [] });
+  }
+  const roots: ComponentHierarchyNode[] = [];
+  for (const component of components) {
+    const node = nodesById.get(component.id);
+    if (!node) continue;
+    if (component.parentId && nodesById.has(component.parentId)) {
+      nodesById.get(component.parentId)?.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  return roots;
+}
+
+export function getComponentMeshUuids(component: VehicleComponent): string[] {
+  return component.meshUuids;
 }

@@ -69,7 +69,9 @@ function isComponentMaterials(value: unknown): value is Record<string, Component
       isFinish(material.finish) &&
       (material.metallic === undefined || isNumberInRange(material.metallic, 0, 1)) &&
       (material.roughness === undefined || isNumberInRange(material.roughness, 0, 1)) &&
-      (material.clearCoat === undefined || isNumberInRange(material.clearCoat, 0, 1))
+      (material.clearCoat === undefined || isNumberInRange(material.clearCoat, 0, 1)) &&
+      (material.emissive === undefined || isColor(material.emissive)) &&
+      (material.opacity === undefined || isNumberInRange(material.opacity, 0, 1))
     );
   });
 }
@@ -326,7 +328,9 @@ function validateCustomization(value: unknown): Customization {
       customization.quality !== "low" &&
       customization.quality !== "medium" &&
       customization.quality !== "high" &&
-      customization.quality !== "ultra")
+      customization.quality !== "ultra") ||
+    (customization.showroomEnvironment !== undefined &&
+      (typeof customization.showroomEnvironment !== "string" || customization.showroomEnvironment.length > 40))
   ) {
     throw new Error("The project contains unsupported customization values.");
   }
@@ -344,5 +348,7 @@ function validateCustomization(value: unknown): Customization {
     bumperStyle: (customization.bumperStyle as BumperStyle | undefined) ?? "street",
     environment: (customization.environment as EnvironmentPreset | undefined) ?? "dark-showroom",
     quality: (customization.quality as QualityLevel | undefined) ?? "high",
+    showroomEnvironment:
+      typeof customization.showroomEnvironment === "string" ? customization.showroomEnvironment : undefined,
   };
 }

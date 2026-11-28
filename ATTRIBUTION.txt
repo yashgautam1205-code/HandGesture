@@ -1,0 +1,123 @@
+Gesture Drive 3D — Third-Party Asset Attributions
+=================================================
+
+This project includes the following third-party 3D assets under their respective licenses.
+All assets are used in compliance with their license terms. Attributions are provided below.
+
+---
+
+1. BMW M4 Competition M Package (G82)
+   -----------------------------------
+   File: public/vehicles/bmw-m4/bmw-m4.glb
+   License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+   License URL: https://creativecommons.org/licenses/by/4.0/
+   Author: SRT Performance™
+   Source: https://sketchfab.com/3d-models/bmw-m4-competition-m-package-5c0a2dafb1ad408d9fc9eeef9aee531b
+   Mirror: https://github.com/coopercodes/bmwGLB
+   Attribution: Credit SRT Performance™; link the source and license, and indicate that the filename was changed for packaging. Model geometry and textures are unmodified.
+   SHA-256: 913ac951ba2645777c91393b86aed2def2433a807e57e626b203908aa474b8fb
+
+---
+
+2. Toy Car
+   --------
+   File: public/vehicles/toy-car.glb
+   License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+   License URL: https://creativecommons.org/publicdomain/zero/1.0/
+   Authors: Guido Odendahl and Eric Chadwick
+   Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ToyCar
+   Attribution: Public domain. No attribution required.
+   SHA-256: 01a60862de55cd4b9f3acfab0b0def86451800f9c42467fcd61052c16cb9838c
+
+---
+
+3. Khronos Car Concept
+   --------------------
+   File: public/vehicles/car-concept/car-concept.glb
+   License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+   License URL: https://creativecommons.org/licenses/by/4.0/
+   Author: Eric Chadwick (Darmstadt Graphics Group GmbH)
+   Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept
+   Attribution: Credit Eric Chadwick (Darmstadt Graphics Group GmbH); link the source and license, and indicate if changes were made. Khronos logos are trademarks.
+   SHA-256: c272098089d78c5cd9fd9f24ff50ee8acf8d932c55f2d55fc10adb6c8998966b
+
+---
+
+4. Kenney Sedan (from Car Kit)
+   ----------------------------
+   File: public/vehicles/kenney-sedan/sedan.glb
+   License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+   License URL: https://creativecommons.org/publicdomain/zero/1.0/
+   Author: Kenney (www.kenney.nl)
+   Source: https://kenney.nl/assets/car-kit
+   Attribution: Public domain. No attribution required. Crediting Kenney is appreciated.
+   SHA-256: 4b38a659a98478f6b85ec657c1689a92da2a53d7cde85d9ab4cbd574f044c08d
+
+---
+
+5. Kenney SUV (from Car Kit)
+   --------------------------
+   File: public/vehicles/kenney-suv/suv.glb
+   License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+   License URL: https://creativecommons.org/publicdomain/zero/1.0/
+   Author: Kenney (www.kenney.nl)
+   Source: https://kenney.nl/assets/car-kit
+   Attribution: Public domain. No attribution required. Crediting Kenney is appreciated.
+   SHA-256: 59560fe1358fe9b2b63d5593887cf796ef9a6fa33f1e9c752b2c3f03c44259a5
+
+---
+
+6. Kenney Sedan Sports (from Car Kit)
+   -----------------------------------
+   File: public/vehicles/kenney-race/sedan-sports.glb
+   License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+   License URL: https://creativecommons.org/publicdomain/zero/1.0/
+   Author: Kenney (www.kenney.nl)
+   Source: https://kenney.nl/assets/car-kit
+   Attribution: Public domain. No attribution required. Crediting Kenney is appreciated.
+   SHA-256: 50d0cf9f2dda9da1d93a8bd5ba67c9351884c824dabfaa6b29cafc54fd65c3f
+
+---
+
+7. Kenney Truck (from Car Kit)
+   ----------------------------
+   File: public/vehicles/kenney-truck/truck.glb
+   License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+   License URL: https://creativecommons.org/publicdomain/zero/1.0/
+   Author: Kenney (www.kenney.nl)
+   Source: https://kenney.nl/assets/car-kit
+   Attribution: Public domain. No attribution required. Crediting Kenney is appreciated.
+   SHA-256: 3aa9ea96baaca1ff88a12c4a12526392b4020a37f768814ed24f11c6306dc297
+
+---
+
+Showroom Environments (HDRI)
+----------------------------
+All HDRI environment maps are sourced from Poly Haven (https://polyhaven.com) under CC0 1.0 Universal.
+Specific files:
+- studio_softbox_01_4k.hdr
+- automotive_showroom_4k.hdr
+- warehouse_industrial_4k.hdr
+- sunrise_studio_4k.hdr
+- night_cityscape_4k.hdr
+Attribution: CC0 1.0 Universal. Public domain. No attribution required. Crediting Poly Haven is appreciated.
+
+---
+
+Third-Party Libraries & Tools
+-----------------------------
+This project uses the following open-source libraries:
+- Electron, React, Vite, TypeScript
+- Three.js, @react-three/fiber, @react-three/drei
+- Zustand, MediaPipe Hands (via @mediapipe/tasks-vision)
+- @gltf-transform/cli (for asset optimization)
+- @gltf-transform/core, @gltf-transform/extensions
+- Vitest, ESLint, Prettier
+
+All libraries are used under their respective open-source licenses (MIT, Apache-2.0, BSD, etc.).
+
+---
+
+Generated: 2026-11-27
+Project: Gesture Drive 3D
+Version: Phase 15 — Multi-Brand Real Vehicle Library

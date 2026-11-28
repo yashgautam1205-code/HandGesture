@@ -3,33 +3,124 @@
  * Builds structured prompts for the AI service based on user requests and application context.
  */
 
-import type { AIChatRequest, AIMessage, AIPresetPackage } from "./types";
+import type { AIMessage, AIPresetPackage } from "./types";
+import type { VehicleContext } from "./vehicleContext";
 
-export function buildSystemPrompt(context: AIChatRequest["context"]): string {
-  const componentList = context.availableComponents.length > 0
-    ? context.availableComponents.join(", ")
-    : "body, hood, roof, front-bumper, rear-bumper, windows, doors, wheels, headlights, spoiler, exhaust";
+function formatHierarchy(nodes: VehicleContext["componentHierarchy"], indent = 0): string {
+  let result = "";
+  const prefix = "  ".repeat(indent);
+  for (const node of nodes) {
+    const caps = node.component;
+    result += `${prefix}- ${caps.name} (${caps.id}) [${caps.category}]`;
+    if (!caps.editable) result += " [READ-ONLY]";
+    if (!caps.transformable) result += " [FIXED]";
+    if (!caps.customizable) result += " [NON-CUSTOMIZABLE]";
+    if (caps.source === "fallback") result += " [MERGED]";
+    if (caps.source === "category") result += " [INFERRED]";
+    result += "\n";
+    if (node.children.length > 0) {
+      result += formatHierarchy(node.children, indent + 1);
+    }
+  }
+  return result;
+}
 
+function formatCurrentMaterials(materials: Record<string, VehicleContext["currentMaterials"][string]>): string {
+  let result = "";
+  for (const [id, mat] of Object.entries(materials)) {
+    result += `${id}: color=${mat.color}, finish=${mat.finish}`;
+    if (mat.metallic !== undefined) result += `, metallic=${mat.metallic}`;
+    if (mat.roughness !== undefined) result += `, roughness=${mat.roughness}`;
+    if (mat.clearCoat !== undefined) result += `, clearCoat=${mat.clearCoat}`;
+    if (mat.emissive) result += `, emissive=${mat.emissive}`;
+    if (mat.opacity !== undefined) result += `, opacity=${mat.opacity}`;
+    result += "\n";
+  }
+  return result;
+}
+
+function formatSupportedActions(actions: VehicleContext["supportedActions"]): string {
+  const byComponent = new Map<string, VehicleContext["supportedActions"]>();
+  for (const action of actions) {
+    const arr = byComponent.get(action.componentId) || [];
+    arr.push(action);
+    byComponent.set(action.componentId, arr);
+  }
+  let result = "";
+  for (const [componentId, componentActions] of byComponent) {
+    result += `Component ${componentId}:\n`;
+    for (const action of componentActions) {
+      result += `  - ${action.action}: ${action.supportedProperties.join(", ")} — ${action.description}\n`;
+    }
+  }
+  return result;
+}
+
+function formatUnsupportedOperations(ops: VehicleContext["unsupportedOperations"]): string {
+  let result = "";
+  for (const op of ops) {
+    result += `- ${op.componentId}.${op.operation}: ${op.reason}\n`;
+  }
+  return result;
+}
+
+function formatReplacementParts(parts: VehicleContext["availableReplacementParts"]): string {
+  if (parts.length === 0) return "none";
+  let result = "";
+  for (const part of parts) {
+    result += `- ${part.name} (${part.category}) → ${part.replacesComponentId ?? "none"} [${part.compatibility}]${part.installed ? " INSTALLED" : ""}\n`;
+  }
+  return result;
+}
+
+function formatContextForSystemPrompt(context: VehicleContext): string {
+  return `## Vehicle Context
+- Vehicle: ${context.vehicleName} (${context.vehicleId})
+- Type: ${context.isImported ? "Imported GLB/glTF" : "Procedural Demo"}
+- Asset Source: ${context.assetSource}
+- Verification: ${context.assetVerification}
+
+## Component Hierarchy
+${formatHierarchy(context.componentHierarchy)}
+
+## Current Material State
+${formatCurrentMaterials(context.currentMaterials)}
+
+## Global Customization
+- Paint: ${context.globalCustomization.paint} (${context.globalCustomization.finish}, metallic=${context.globalCustomization.paintMetallic}, roughness=${context.globalCustomization.paintRoughness}, clearCoat=${context.globalCustomization.clearCoat})
+- Wheels: ${context.globalCustomization.wheelColor} (${context.globalCustomization.wheelDesign})
+- Spoiler: ${context.globalCustomization.spoiler ? context.globalCustomization.spoilerStyle : "none"}
+- Bumper: ${context.globalCustomization.bumperStyle}
+- Window Tint: ${context.globalCustomization.windowTint ? "on" : "off"}
+- Environment: ${context.globalCustomization.environment}
+
+## Available Replacement Parts
+${formatReplacementParts(context.availableReplacementParts)}
+
+## Supported Customization Actions
+${formatSupportedActions(context.supportedActions)}
+
+## Unsupported Operations
+${formatUnsupportedOperations(context.unsupportedOperations) || "All supported operations are available for editable components."}
+
+## Modification Rules
+1. Only propose changes that map to supported actions above.
+2. Never invent components not listed in the hierarchy.
+3. For merged/fallback components (marked [MERGED]), only global paint changes apply.
+4. For read-only components (marked [READ-ONLY]), explain why customization is unavailable.
+5. For inferred components (marked [INFERRED]), note that mappings are approximate.
+6. Component IDs must exactly match the IDs in the hierarchy.
+7. Material properties must use valid ranges: color=#RRGGBB, metallic/roughness/clearCoat/opacity=0-1, finish=gloss|matte|metallic.
+8. Requires confirmation for all vehicle modifications.
+9. If a request cannot be fulfilled, explain why and suggest alternatives.`;
+}
+
+export function buildSystemPrompt(context: VehicleContext): string {
   return `You are an AI Automotive Design Assistant for GESTURE DRIVE 3D.
 
 Your role: Help users customize their vehicle through natural-language requests.
 
-## Current Vehicle Context
-- Vehicle type: ${context.vehicleType}
-- Is imported model: ${context.isImported ? "Yes (GLB/glTF)" : "No (procedural)"}
-- Available components: ${componentList}
-- Available replacement parts: ${context.availableParts.length > 0 ? context.availableParts.join(", ") : "none imported"}
-
-## Supported Modification Capabilities
-1. **Paint changes** — Change body color with hex code, adjust finish (gloss/matte/metallic), metallic value, roughness, clear coat
-2. **Material changes** — Apply different materials to specific components (chrome, carbon fiber, rubber, glass)
-3. **Wheel replacements** — Change wheel design (five-spoke/turbine), wheel color, or import new wheel GLB
-4. **Spoiler installation** — Add/remove spoiler, change style (sport/track)
-5. **Bumper replacement** — Change bumper style (street/track), import new bumper GLB
-6. **Exhaust changes** — Modify exhaust appearance
-7. **Lighting appearance** — Change headlight/taillight emissive color and intensity
-8. **Interior appearance** — Modify dashboard, seats, steering wheel materials
-9. **Window treatments** — Toggle window tint, change tint darkness
+${formatContextForSystemPrompt(context)}
 
 ## Response Format
 Always respond with a JSON object containing:
@@ -67,15 +158,15 @@ Always respond with a JSON object containing:
 }
 
 ## Rules
-- Only propose changes that map to actual application capabilities
-- Never invent assets or components that don't exist
-- If a requested change cannot be performed, explain why and suggest alternatives
-- Set autoExecutable to false when a replacement asset is required but not available
-- Set compatibility to "incompatible" when the change cannot work
-- Confidence should reflect how certain you are about the proposal
-- requiresConfirmation must always be true for vehicle modifications
-- Be concise in explanations
-- Distinguish general automotive knowledge from vehicle-specific advice`;
+- Only propose changes that map to actual application capabilities listed in Supported Customization Actions.
+- Never invent assets or components that don't exist in the hierarchy.
+- If a requested change cannot be performed, explain why and suggest alternatives.
+- Set autoExecutable to false when a replacement asset is required but not available.
+- Set compatibility to "incompatible" when the change cannot work.
+- Confidence should reflect how certain you are about the proposal.
+- requiresConfirmation must always be true for vehicle modifications.
+- Be concise in explanations.
+- Distinguish general automotive knowledge from vehicle-specific advice.`;
 }
 
 export function buildUserPrompt(request: string, history: AIMessage[]): string {
@@ -140,18 +231,4 @@ Respond with a JSON object:
 }`;
 }
 
-export function buildRequestContext(
-  customization: Record<string, unknown>,
-  components: string[],
-  parts: string[],
-  vehicleType: string,
-  isImported: boolean,
-): AIChatRequest["context"] {
-  return {
-    currentCustomization: customization,
-    availableComponents: components,
-    availableParts: parts,
-    vehicleType,
-    isImported,
-  };
-}
+export { formatContextForSystemPrompt };
